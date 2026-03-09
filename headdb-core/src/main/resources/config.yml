@@ -97,7 +97,7 @@ controls:
 # Database Configuration
 database:
   # Primary URL used to fetch the head database JSON.
-  sourceUrl: "https://raw.githubusercontent.com/TheSilentPro/heads/refs/heads/main/heads.json"
+  sourceUrl: "https://raw.githubusercontent.com/EarthPol/HeadDB/refs/heads/master/heads.json"
   # Optional fallback URLs that are tried in order if the primary source fails.
   fallbackSourceUrls: []
   # Threads pool for the database

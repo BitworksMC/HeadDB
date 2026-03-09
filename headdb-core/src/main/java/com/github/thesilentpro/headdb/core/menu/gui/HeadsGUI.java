@@ -131,7 +131,6 @@ public class HeadsGUI extends PaginatedGUI {
                                 Component.text("Click here to go to the main menu.")
                         )
                 ));
-
         // Next button
         ItemStack nextItem = plugin.getHeadApi()
                 .findByTexture(plugin.getCfg().getNextTexture())
@@ -160,6 +159,25 @@ public class HeadsGUI extends PaginatedGUI {
                 }),
                 true
         );
+
+        // Ensure page info name is visible on Paper while preserving translated values.
+        if (Compatibility.IS_PAPER) {
+            getPages().values().forEach(page -> {
+                if (page instanceof com.github.thesilentpro.grim.page.controllable.PaginatedControllable controllable) {
+                    page.updateButton(controllable.getCurrentSlot(), button ->
+                            button.getItem().ifPresent(item -> {
+                                var meta = item.getItemMeta();
+                                Component name = meta.itemName();
+                                if (name != null) {
+                                    meta.displayName(name.decoration(TextDecoration.ITALIC, false));
+                                    item.setItemMeta(meta);
+                                    button.setItem(item);
+                                }
+                            })
+                    );
+                }
+            });
+        }
 
         // Rerender all pages so the new control items show up
         getPages().values().forEach(Page::reRender);
