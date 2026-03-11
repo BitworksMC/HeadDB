@@ -36,13 +36,13 @@
 Choose your preferred source:
 
 - **Releases (GitHub)**  
-  https://github.com/TheSilentPro/HeadDB/releases  
+  https://github.com/BitworksMC/HeadDB/releases  
 - **Modrinth**  
-  https://modrinth.com/plugin/hdb  
+  [Coming Soon]
 - **Hangar (PaperMC)**  
-  https://hangar.papermc.io/Silent/HeadDB  
+  [Coming Soon]
 - **Spigot** *(Not recommended)*  
-  https://www.spigotmc.org/resources/84967/  
+  [Coming Soon]
 
 ---
 
@@ -50,7 +50,7 @@ Choose your preferred source:
 
 Found a bug or have a feature request? Open an issue:
 
-[HeadDB Issue Tracker](https://github.com/TheSilentPro/HeadDB/issues)
+[HeadDB Issue Tracker](https://github.com/BitworksMC/HeadDB/issues)
 
 ---
 
@@ -58,15 +58,15 @@ Found a bug or have a feature request? Open an issue:
 
 ### 1. Adding the Dependency
 
-HeadDB publishes its API module via JitPack.
+HeadDB publishes its API module via our own Nexus Maven Repo.
 
 #### Maven
 ```xml
 <repositories>
-  <repository>
-    <id>jitpack.io</id>
-    <url>https://jitpack.io</url>
-  </repository>
+    <repository>
+        <id>bitworks-repo</id>
+        <url>https://nexus.bitworksmc.com/repository/maven-releases/</url>
+    </repository>
 </repositories>
 
 <dependencies>
@@ -82,7 +82,7 @@ HeadDB publishes its API module via JitPack.
 ```gradle
 repositories {
     mavenCentral()
-    maven { url 'https://jitpack.io' }
+    maven { url 'https://nexus.bitworksmc.com/repository/maven-releases/ }
 }
 
 dependencies {

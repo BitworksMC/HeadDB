@@ -38,6 +38,10 @@
             <id>placeholderapi</id>
             <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
         </repository>
+        <repository>
+            <id>codemc-creatorfromhell</id>
+            <url>https://repo.codemc.io/repository/creatorfromhell/</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -87,9 +91,9 @@
         <!-- Soft dependencies (provided) -->
         <!--suppress VulnerableLibrariesLocal -->
         <dependency>
-            <groupId>com.github.MilkBowl</groupId>
-            <artifactId>VaultAPI</artifactId>
-            <version>1.7</version>
+            <groupId>net.milkbowl.vault</groupId>
+            <artifactId>VaultUnlockedAPI</artifactId>
+            <version>2.19</version>
             <scope>provided</scope>
         </dependency>
         <dependency>

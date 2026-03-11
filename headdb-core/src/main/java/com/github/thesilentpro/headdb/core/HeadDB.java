@@ -63,9 +63,13 @@ public class HeadDB extends JavaPlugin {
             if (econProvider.equalsIgnoreCase("NONE") || econProvider.isEmpty()) {
                 LOGGER.debug("Economy is disabled.");
             } else if (config.getEconomyProvider().equalsIgnoreCase("VAULT")) {
-                this.economyProvider = new VaultEconomyProvider();
-                this.economyProvider.init();
-                LOGGER.debug("Economy Provider: Vault");
+                VaultEconomyProvider vaultProvider = new VaultEconomyProvider(getName());
+                if (vaultProvider.init()) {
+                    this.economyProvider = vaultProvider;
+                    LOGGER.debug("Economy Provider: Vault");
+                } else {
+                    LOGGER.warn("Vault economy was enabled but no compatible provider was found. Economy features are disabled.");
+                }
             } else {
                 LOGGER.warn("Unknown economy provider in the config.yml!");
             }
@@ -126,7 +130,7 @@ public class HeadDB extends JavaPlugin {
                     """, bukkitName + " " + bukkitVersion);
         }
 
-        new Metrics(this, 9152);
+        new Metrics(this, 30043);
         LOGGER.info("Done! Database is {}", !this.headDatabase.isReady() ? "loading..." : "ready");
     }
 

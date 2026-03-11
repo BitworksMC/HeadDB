@@ -23,7 +23,7 @@ public class Config {
     private static final Logger LOGGER = LoggerFactory.getLogger(Config.class);
 
     // === Default Head Textures ===
-    private static final String DEFAULT_DATABASE_SOURCE_URL = "https://raw.githubusercontent.com/TheSilentPro/heads/refs/heads/main/heads.json";
+    private static final String DEFAULT_DATABASE_SOURCE_URL = "https://raw.githubusercontent.com/BitworksMC/HeadDB/refs/heads/master/heads.json";
     private static final String DEFAULT_BACK_TEXTURE = "e5da4847272582265bdaca367237c96122b139f4e597fbc6667d3fb75fea7cf6";
     private static final String DEFAULT_INFO_TEXTURE = "93e5cb83cfdf42e9c4d8a3ecb4f889f6a5f418dce0a894c97e416a0eaf0d58";
     private static final String DEFAULT_NEXT_TEXTURE = "62bfb7ed2bd9f1d1f85c3d6ffb1626f252c5ecfd79d51a3f56ebf8e0c3c91";

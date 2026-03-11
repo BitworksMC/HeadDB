@@ -13,8 +13,10 @@ public interface EconomyProvider {
     /**
      * Initializes the economy provider.
      * This may include hooking into other plugins or setting up internal state.
+     *
+     * @return true if initialization was successful and the provider is usable
      */
-    void init();
+    boolean init();
 
     /**
      * Checks asynchronously if the player can afford the specified amount.

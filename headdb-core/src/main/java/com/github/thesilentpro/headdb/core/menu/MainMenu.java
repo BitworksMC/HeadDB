@@ -230,7 +230,7 @@ public class MainMenu extends SimplePage {
                 Component.text("📥 Submit your favorite or original heads").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
                 Component.text("✨ Directly through our community Discord!").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
                 Component.text(""),
-                Component.text("🔗 Discord > https://discord.gg/RJsVvVd").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)
+                Component.text("🔗 Discord > https://discord.gg/j8BAsz8Ac7").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)
         };
 
         ItemStack item = plugin.getHeadApi()
@@ -239,7 +239,7 @@ public class MainMenu extends SimplePage {
                 .map(head -> Compatibility.setItemDetails(head.getItem(), Component.text("Can't find the head you're looking for?").color(NamedTextColor.RED), lore))
                 .orElse(Compatibility.newItem(Material.BOOK, Component.text("Can't find the head you're looking for?").color(NamedTextColor.RED), lore));
 
-        setButton(53, new SimpleButton(item, ctx -> Compatibility.sendMessage(ctx.event().getWhoClicked(), Component.text("Click to join: https://discord.gg/RJsVvVd").color(NamedTextColor.AQUA))));
+        setButton(53, new SimpleButton(item, ctx -> Compatibility.sendMessage(ctx.event().getWhoClicked(), Component.text("Click to join: https://discord.gg/j8BAsz8Ac7").color(NamedTextColor.AQUA))));
     }
 
     private void fillBorder(Page page) {

@@ -65,7 +65,7 @@ public class FavoritesHeadsGUI extends PaginatedGUI {
                                 .decoration(TextDecoration.ITALIC, false)
                                 .color(NamedTextColor.YELLOW),
                         Component.text(""),
-                        Component.text("🔗 Discord > https://discord.gg/RJsVvVd")
+                        Component.text("🔗 Discord > https://discord.gg/j8BAsz8Ac7")
                                 .decoration(TextDecoration.ITALIC, false)
                                 .color(NamedTextColor.YELLOW)
                 };
@@ -87,7 +87,7 @@ public class FavoritesHeadsGUI extends PaginatedGUI {
                 page.setButton(53, new SimpleButton(infoItem, ctx -> {
                     Compatibility.sendMessage(
                             ctx.event().getWhoClicked(),
-                            Component.text("Click to join: https://discord.gg/RJsVvVd").color(NamedTextColor.AQUA)
+                            Component.text("Click to join: https://discord.gg/j8BAsz8Ac7").color(NamedTextColor.AQUA)
                     );
                 }));
             }
