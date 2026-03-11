@@ -12,7 +12,7 @@
     <artifactId>headdb-core</artifactId>
 
     <description>Head Database</description>
-    <version>6.0.0-rc.2</version>
+    <version>6.0.0</version>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
