@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.github.thesilentpro</groupId>
+        <groupId>com.bitworksmc</groupId>
         <artifactId>HeadDB</artifactId>
         <version>6.0.0</version>
     </parent>
@@ -46,7 +46,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.github.thesilentpro</groupId>
+            <groupId>com.bitworksmc</groupId>
             <artifactId>headdb-api</artifactId>
             <version>6.0.0</version>
         </dependency>
@@ -185,17 +185,17 @@
                             <relocations>
                                 <relocation>
                                     <pattern>com.github.thesilentpro.InvLib</pattern>
-                                    <shadedPattern>com.github.thesilentpro.libs.invlib</shadedPattern>
+                                    <shadedPattern>com.bitworksmc.libs.invlib</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.github.thesilentpro.Localization</pattern>
-                                    <shadedPattern>com.github.thesilentpro.libs.localization</shadedPattern>
+                                    <shadedPattern>com.bitworksmc.libs.localization</shadedPattern>
                                 </relocation>
                             </relocations>
 
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.github.thesilentpro.headdb.core.HeadDB</mainClass>
+                                    <mainClass>com.bitworksmc.headdb.core.HeadDB</mainClass>
                                 </transformer>
                             </transformers>
 
@@ -218,21 +218,21 @@
                             <relocations>
                                 <relocation>
                                     <pattern>net.kyori.adventure</pattern>
-                                    <shadedPattern>com.github.thesilentpro.libs.adventure</shadedPattern>
+                                    <shadedPattern>com.bitworksmc.libs.adventure</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.github.thesilentpro.InvLib</pattern>
-                                    <shadedPattern>com.github.thesilentpro.libs.invlib</shadedPattern>
+                                    <shadedPattern>com.bitworksmc.libs.invlib</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.github.thesilentpro.Localization</pattern>
-                                    <shadedPattern>com.github.thesilentpro.libs.localization</shadedPattern>
+                                    <shadedPattern>com.bitworksmc.libs.localization</shadedPattern>
                                 </relocation>
                             </relocations>
 
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.github.thesilentpro.headdb.core.HeadDB</mainClass>
+                                    <mainClass>com.bitworksmc.headdb.core.HeadDB</mainClass>
                                 </transformer>
                             </transformers>
 

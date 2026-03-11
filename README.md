@@ -71,8 +71,8 @@ HeadDB publishes its API module via our own Nexus Maven Repo.
 
 <dependencies>
   <dependency>
-    <groupId>com.github.TheSilentPro.HeadDB</groupId>
-    <artifactId>HeadDB</artifactId>
+    <groupId>com.bitworksmc</groupId>
+    <artifactId>headdb-api</artifactId>
     <version>VERSION</version>
   </dependency>
 </dependencies>
@@ -82,11 +82,11 @@ HeadDB publishes its API module via our own Nexus Maven Repo.
 ```gradle
 repositories {
     mavenCentral()
-    maven { url 'https://nexus.bitworksmc.com/repository/maven-releases/ }
+    maven { url 'https://nexus.bitworksmc.com/repository/maven-releases/' }
 }
 
 dependencies {
-    implementation "com.github.TheSilentPro.HeadDB:HeadDB:VERSION"
+    implementation "com.bitworksmc:headdb-api:VERSION"
 }
 ```
 
@@ -157,7 +157,9 @@ api.onReady().thenRun(() -> {
 
 ## 📖 API Reference
 
-All available methods live in the [HeadAPI class on GitHub](https://github.com/TheSilentPro/HeadDB/blob/master/headdb-api/src/main/java/com/github/thesilentpro/headdb/api/HeadAPI.java).
+All available methods live in the [HeadAPI class on GitHub](https://github.com/BitworksMC/HeadDB/blob/master/headdb-api/src/main/java/com/bitworksmc/headdb/api/HeadAPI.java).
+
+Legacy compatibility: `com.github.thesilentpro.headdb.api.*` remains available and deprecated for migration.
 
 | Method                                    | Description                                                      |
 |-------------------------------------------|------------------------------------------------------------------|

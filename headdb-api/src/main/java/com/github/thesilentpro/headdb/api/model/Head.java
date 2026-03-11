@@ -4,6 +4,10 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.List;
 
+/**
+ * @deprecated Use {@link com.bitworksmc.headdb.api.model.Head} instead.
+ */
+@Deprecated(forRemoval = true, since = "6.0.0")
 public interface Head {
 
     int getId();
