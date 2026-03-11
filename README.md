@@ -36,13 +36,13 @@
 Choose your preferred source:
 
 - **Releases (GitHub)**  
-  https://github.com/TheSilentPro/HeadDB/releases  
+  https://github.com/BitworksMC/HeadDB/releases  
 - **Modrinth**  
-  https://modrinth.com/plugin/hdb  
+  [Coming Soon]
 - **Hangar (PaperMC)**  
-  https://hangar.papermc.io/Silent/HeadDB  
+  [Coming Soon]
 - **Spigot** *(Not recommended)*  
-  https://www.spigotmc.org/resources/84967/  
+  [Coming Soon]
 
 ---
 
@@ -50,7 +50,7 @@ Choose your preferred source:
 
 Found a bug or have a feature request? Open an issue:
 
-[HeadDB Issue Tracker](https://github.com/TheSilentPro/HeadDB/issues)
+[HeadDB Issue Tracker](https://github.com/BitworksMC/HeadDB/issues)
 
 ---
 
@@ -58,21 +58,21 @@ Found a bug or have a feature request? Open an issue:
 
 ### 1. Adding the Dependency
 
-HeadDB publishes its API module via JitPack.
+HeadDB publishes its API module via our own Nexus Maven Repo.
 
 #### Maven
 ```xml
 <repositories>
-  <repository>
-    <id>jitpack.io</id>
-    <url>https://jitpack.io</url>
-  </repository>
+    <repository>
+        <id>bitworks-repo</id>
+        <url>https://nexus.bitworksmc.com/repository/maven-releases/</url>
+    </repository>
 </repositories>
 
 <dependencies>
   <dependency>
-    <groupId>com.github.TheSilentPro.HeadDB</groupId>
-    <artifactId>HeadDB</artifactId>
+    <groupId>com.bitworksmc</groupId>
+    <artifactId>headdb-api</artifactId>
     <version>VERSION</version>
   </dependency>
 </dependencies>
@@ -82,11 +82,11 @@ HeadDB publishes its API module via JitPack.
 ```gradle
 repositories {
     mavenCentral()
-    maven { url 'https://jitpack.io' }
+    maven { url 'https://nexus.bitworksmc.com/repository/maven-releases/' }
 }
 
 dependencies {
-    implementation "com.github.TheSilentPro.HeadDB:HeadDB:VERSION"
+    implementation "com.bitworksmc:headdb-api:VERSION"
 }
 ```
 
@@ -157,7 +157,9 @@ api.onReady().thenRun(() -> {
 
 ## 📖 API Reference
 
-All available methods live in the [HeadAPI class on GitHub](https://github.com/TheSilentPro/HeadDB/blob/master/headdb-api/src/main/java/com/github/thesilentpro/headdb/api/HeadAPI.java).
+All available methods live in the [HeadAPI class on GitHub](https://github.com/BitworksMC/HeadDB/blob/master/headdb-api/src/main/java/com/bitworksmc/headdb/api/HeadAPI.java).
+
+Legacy compatibility: `com.github.thesilentpro.headdb.api.*` remains available and deprecated for migration.
 
 | Method                                    | Description                                                      |
 |-------------------------------------------|------------------------------------------------------------------|

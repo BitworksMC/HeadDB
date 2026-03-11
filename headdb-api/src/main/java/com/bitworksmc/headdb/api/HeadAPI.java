@@ -1,6 +1,6 @@
-package com.github.thesilentpro.headdb.api;
+package com.bitworksmc.headdb.api;
 
-import com.github.thesilentpro.headdb.api.model.Head;
+import com.bitworksmc.headdb.api.model.Head;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
@@ -11,11 +11,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
 /**
- * Public-facing API for head database operations.
- *
- * @deprecated Use {@link com.bitworksmc.headdb.api.HeadAPI} instead.
+ * Preferred API namespace for HeadDB integrations.
  */
-@Deprecated(forRemoval = true, since = "6.0.0")
 public interface HeadAPI {
 
     /**
@@ -78,5 +75,4 @@ public interface HeadAPI {
      */
     @NotNull
     ExecutorService getExecutor();
-
 }

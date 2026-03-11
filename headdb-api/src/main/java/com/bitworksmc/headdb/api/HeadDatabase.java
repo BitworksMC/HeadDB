@@ -1,14 +1,13 @@
-package com.github.thesilentpro.headdb.api;
+package com.bitworksmc.headdb.api;
 
-import com.github.thesilentpro.headdb.api.model.Head;
+import com.bitworksmc.headdb.api.model.Head;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * @deprecated Use {@link com.bitworksmc.headdb.api.HeadDatabase} instead.
+ * Preferred API namespace for HeadDB database access.
  */
-@Deprecated(forRemoval = true, since = "6.0.0")
 public interface HeadDatabase {
 
     CompletableFuture<List<Head>> update();
@@ -43,5 +42,4 @@ public interface HeadDatabase {
 
     // Get a head by texture (returns a head or null if not found)
     Head getByTexture(String texture);
-
 }

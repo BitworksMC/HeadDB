@@ -2,7 +2,7 @@ name: HeadDB
 description: ${project.description}
 author: TheSilentPro (Silent)
 
-main: com.github.thesilentpro.headdb.core.HeadDB
+main: com.bitworksmc.headdb.core.HeadDB
 version: ${project.version}
 softdepend: [
   #"PlaceholderAPI",

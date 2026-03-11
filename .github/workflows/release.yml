@@ -1,0 +1,77 @@
+name: GitHub Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (example: v6.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build release artifacts
+        run: mvn -B -ntp -DskipTests package
+
+      - name: Resolve release metadata
+        id: metadata
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          CHANGELOG_FILE="changelog/${VERSION}.md"
+
+          echo "tag=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+          if [ -f "${CHANGELOG_FILE}" ]; then
+            echo "has_changelog=true" >> "${GITHUB_OUTPUT}"
+            echo "changelog_file=${CHANGELOG_FILE}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "has_changelog=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Create release from changelog
+        if: steps.metadata.outputs.has_changelog == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.metadata.outputs.tag }}
+          name: HeadDB ${{ steps.metadata.outputs.version }}
+          body_path: ${{ steps.metadata.outputs.changelog_file }}
+          files: |
+            headdb-core/target/HeadDB-*.jar
+          fail_on_unmatched_files: true
+
+      - name: Create release with generated notes
+        if: steps.metadata.outputs.has_changelog != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.metadata.outputs.tag }}
+          name: HeadDB ${{ steps.metadata.outputs.version }}
+          generate_release_notes: true
+          files: |
+            headdb-core/target/HeadDB-*.jar
+          fail_on_unmatched_files: true
