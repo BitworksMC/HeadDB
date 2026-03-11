@@ -38,11 +38,11 @@ Choose your preferred source:
 - **Releases (GitHub)**  
   https://github.com/BitworksMC/HeadDB/releases  
 - **Modrinth**  
-  [Coming Soon]
+  https://modrinth.com/plugin/headdb
 - **Hangar (PaperMC)**  
-  [Coming Soon]
+  https://hangar.papermc.io/GoodrichDev/HeadDatabase
 - **Spigot** *(Not recommended)*  
-  [Coming Soon]
+  https://www.spigotmc.org/resources/headdb.133362/
 
 ---
 
