@@ -14,6 +14,7 @@ import com.bitworksmc.headdb.core.storage.PlayerData;
 import com.bitworksmc.headdb.core.util.Compatibility;
 import com.github.thesilentpro.inputs.paper.PaperInput;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
@@ -28,6 +29,7 @@ import java.util.concurrent.CompletableFuture;
 public class MainMenu extends SimplePage {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MainMenu.class);
+    private static final String DISCORD_URL = "https://discord.gg/j8BAsz8Ac7";
     private static final int[] CATEGORY_SLOTS = {11, 12, 13, 14, 15, 20, 21, 22, 23, 24, 29, 30, 31, 32, 33};
 
     public MainMenu(HeadDB plugin) {
@@ -97,7 +99,7 @@ public class MainMenu extends SimplePage {
                 .map(head -> Compatibility.setItemDetails(head.getItem(), getMsg(plugin, "menu.main.local.name", "Local Heads", NamedTextColor.AQUA), Component.text("")))
                 .orElse(Compatibility.newItem(Material.COMPASS, getMsg(plugin, "menu.main.local.name", "Local Heads", NamedTextColor.AQUA), Component.text("")));
 
-        setButton(41, new SimpleButton(item, ctx -> {
+        setButton(50, new SimpleButton(item, ctx -> {
             Player player = (Player) ctx.event().getWhoClicked();
             if (!player.hasPermission("headdb.category.local")) {
                 plugin.getLocalization().sendMessage(player, "noPermission");
@@ -126,7 +128,7 @@ public class MainMenu extends SimplePage {
                 .map(head -> Compatibility.setItemDetails(head.getItem(), getMsg(plugin, "menu.main.favorites.name", "Favorites", NamedTextColor.YELLOW), Component.text("")))
                 .orElse(Compatibility.newItem(Material.BOOK, getMsg(plugin, "menu.main.favorites.name", "Favorites", NamedTextColor.YELLOW), Component.text("")));
 
-        setButton(42, new SimpleButton(item, ctx -> {
+        setButton(51, new SimpleButton(item, ctx -> {
             Player player = (Player) ctx.event().getWhoClicked();
             if (!player.hasPermission("headdb.category.favorites")) {
                 plugin.getLocalization().sendMessage(player, "noPermission");
@@ -170,7 +172,7 @@ public class MainMenu extends SimplePage {
                 .map(head -> Compatibility.setItemDetails(head.getItem(), getMsg(plugin, "menu.main.customCategories.name", "More Categories", NamedTextColor.DARK_PURPLE), Component.text("")))
                 .orElse(Compatibility.newItem(plugin.getCfg().getCustomCategoryItem(), getMsg(plugin, "menu.main.customCategories.name", "More Categories", NamedTextColor.DARK_PURPLE), Component.text("")));
 
-        setButton(38, new SimpleButton(item, ctx -> {
+        setButton(47, new SimpleButton(item, ctx -> {
             Player player = (Player) ctx.event().getWhoClicked();
             if (!player.hasPermission("headdb.category.custom")) {
                 plugin.getLocalization().sendMessage(player, "noPermission");
@@ -197,7 +199,7 @@ public class MainMenu extends SimplePage {
                 .map(head -> Compatibility.setItemDetails(head.getItem(), getMsg(plugin, "menu.main.search.name", "Search", NamedTextColor.GREEN), Component.text("")))
                 .orElse(Compatibility.newItem(plugin.getCfg().getSearchItem(), getMsg(plugin, "menu.main.search.name", "Search", NamedTextColor.GREEN), Component.text("")));
 
-        setButton(39, new SimpleButton(item, ctx -> {
+        setButton(48, new SimpleButton(item, ctx -> {
             if (!ctx.event().getWhoClicked().hasPermission("headdb.command.search")) {
                 plugin.getLocalization().sendMessage(ctx.event().getWhoClicked(), "noPermission");
                 Compatibility.playSound(ctx.event().getWhoClicked(), plugin.getSoundConfig().get("noPermission"));
@@ -230,7 +232,7 @@ public class MainMenu extends SimplePage {
                 Component.text("📥 Submit your favorite or original heads").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
                 Component.text("✨ Directly through our community Discord!").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
                 Component.text(""),
-                Component.text("🔗 Discord > https://discord.gg/j8BAsz8Ac7").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)
+                Component.text("🔗 Discord > " + DISCORD_URL).color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)
         };
 
         ItemStack item = plugin.getHeadApi()
@@ -239,7 +241,13 @@ public class MainMenu extends SimplePage {
                 .map(head -> Compatibility.setItemDetails(head.getItem(), Component.text("Can't find the head you're looking for?").color(NamedTextColor.RED), lore))
                 .orElse(Compatibility.newItem(Material.BOOK, Component.text("Can't find the head you're looking for?").color(NamedTextColor.RED), lore));
 
-        setButton(53, new SimpleButton(item, ctx -> Compatibility.sendMessage(ctx.event().getWhoClicked(), Component.text("Click to join: https://discord.gg/j8BAsz8Ac7").color(NamedTextColor.AQUA))));
+        setButton(53, new SimpleButton(item, ctx -> Compatibility.sendMessage(
+                ctx.event().getWhoClicked(),
+                Component.text("Click to join: " + DISCORD_URL)
+                        .color(NamedTextColor.AQUA)
+                        .clickEvent(ClickEvent.openUrl(DISCORD_URL))
+                        .decoration(TextDecoration.UNDERLINED, true)
+        )));
     }
 
     private void fillBorder(Page page) {

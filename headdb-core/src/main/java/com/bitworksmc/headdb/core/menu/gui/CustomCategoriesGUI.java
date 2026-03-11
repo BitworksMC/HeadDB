@@ -9,6 +9,7 @@ import com.bitworksmc.headdb.core.menu.CustomCategoriesMenu;
 import com.bitworksmc.headdb.core.util.Compatibility;
 import com.bitworksmc.headdb.core.util.Utils;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -20,6 +21,7 @@ import org.bukkit.inventory.ItemStack;
 import java.util.List;
 
 public class CustomCategoriesGUI extends PaginatedGUI {
+    private static final String DISCORD_URL = "https://discord.gg/j8BAsz8Ac7";
 
     public CustomCategoriesGUI(HeadDB plugin, String key, Component title, List<CustomCategory> categories) {
         super(new NamespacedKey(plugin, "gui_" + key));
@@ -57,7 +59,7 @@ public class CustomCategoriesGUI extends PaginatedGUI {
                                 .decoration(TextDecoration.ITALIC, false)
                                 .color(NamedTextColor.YELLOW),
                         Component.text(""),
-                        Component.text("🔗 Discord > https://discord.gg/j8BAsz8Ac7")
+                        Component.text("🔗 Discord > " + DISCORD_URL)
                                 .decoration(TextDecoration.ITALIC, false)
                                 .color(NamedTextColor.YELLOW)
                 };
@@ -79,7 +81,10 @@ public class CustomCategoriesGUI extends PaginatedGUI {
                 headsMenu.setButton(53, new SimpleButton(infoItem, ctx -> {
                     Compatibility.sendMessage(
                             ctx.event().getWhoClicked(),
-                            Component.text("Click to join: https://discord.gg/j8BAsz8Ac7").color(NamedTextColor.AQUA)
+                            Component.text("Click to join: " + DISCORD_URL)
+                                    .color(NamedTextColor.AQUA)
+                                    .clickEvent(ClickEvent.openUrl(DISCORD_URL))
+                                    .decoration(TextDecoration.UNDERLINED, true)
                     );
                 }));
             }
