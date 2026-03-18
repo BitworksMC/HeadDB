@@ -12,6 +12,7 @@ import com.bitworksmc.headdb.core.menu.gui.HeadsGUI;
 import com.bitworksmc.headdb.core.menu.gui.LocalHeadsGUI;
 import com.bitworksmc.headdb.core.storage.PlayerData;
 import com.bitworksmc.headdb.core.util.Compatibility;
+import com.bitworksmc.headdb.core.util.PermissionUtil;
 import com.github.thesilentpro.inputs.paper.PaperInput;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -78,7 +79,7 @@ public class MainMenu extends SimplePage {
 
             setButton(CATEGORY_SLOTS[i], new SimpleButton(item, ctx -> {
                 Player player = (Player) ctx.event().getWhoClicked();
-                if (!player.hasPermission("headdb.category." + category)) {
+                if (!PermissionUtil.hasCategoryPermission(player, category)) {
                     plugin.getLocalization().sendMessage(player, "noPermission");
                     Compatibility.playSound(player, plugin.getSoundConfig().get("noPermission"));
                     return;
@@ -101,7 +102,7 @@ public class MainMenu extends SimplePage {
 
         setButton(50, new SimpleButton(item, ctx -> {
             Player player = (Player) ctx.event().getWhoClicked();
-            if (!player.hasPermission("headdb.category.local")) {
+            if (!PermissionUtil.hasCategoryPermission(player, "local")) {
                 plugin.getLocalization().sendMessage(player, "noPermission");
                 Compatibility.playSound(player, plugin.getSoundConfig().get("noPermission"));
                 return;
@@ -130,7 +131,7 @@ public class MainMenu extends SimplePage {
 
         setButton(51, new SimpleButton(item, ctx -> {
             Player player = (Player) ctx.event().getWhoClicked();
-            if (!player.hasPermission("headdb.category.favorites")) {
+            if (!PermissionUtil.hasCategoryPermission(player, "favorites")) {
                 plugin.getLocalization().sendMessage(player, "noPermission");
                 Compatibility.playSound(player, plugin.getSoundConfig().get("noPermission"));
                 return;
@@ -174,7 +175,7 @@ public class MainMenu extends SimplePage {
 
         setButton(47, new SimpleButton(item, ctx -> {
             Player player = (Player) ctx.event().getWhoClicked();
-            if (!player.hasPermission("headdb.category.custom")) {
+            if (!PermissionUtil.hasCategoryPermission(player, "custom")) {
                 plugin.getLocalization().sendMessage(player, "noPermission");
                 Compatibility.playSound(player, plugin.getSoundConfig().get("noPermission"));
                 return;

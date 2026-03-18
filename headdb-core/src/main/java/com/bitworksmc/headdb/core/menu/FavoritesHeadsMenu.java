@@ -8,6 +8,7 @@ import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.factory.ItemFactoryRegistry;
 import com.bitworksmc.headdb.core.storage.PlayerData;
 import com.bitworksmc.headdb.core.util.Compatibility;
+import com.bitworksmc.headdb.core.util.PermissionUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -27,7 +28,7 @@ public class FavoritesHeadsMenu extends PaginatedSimplePage {
                 Player player = (Player) ctx.event().getWhoClicked();
                 ClickType click = ctx.event().getClick();
 
-                if (!player.hasPermission("headdb.category." + head.getCategory())) {
+                if (!PermissionUtil.hasCategoryPermission(player, head.getCategory())) {
                     plugin.getLocalization().sendMessage(player, "noPermission");
                     Compatibility.playSound(player, plugin.getSoundConfig().get("noPermission"));
                     return;
@@ -68,7 +69,7 @@ public class FavoritesHeadsMenu extends PaginatedSimplePage {
                 Player player = (Player) ctx.event().getWhoClicked();
                 ClickType click = ctx.event().getClick();
 
-                if (!player.hasPermission("headdb.category.local")) {
+                if (!PermissionUtil.hasCategoryPermission(player, "local")) {
                     plugin.getLocalization().sendMessage(player, "noPermission");
                     Compatibility.playSound(player, plugin.getSoundConfig().get("noPermission"));
                     return;
