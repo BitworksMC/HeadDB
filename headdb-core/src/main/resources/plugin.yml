@@ -28,8 +28,11 @@ permissions:
       headdb.command.open: true
       headdb.command.search: true
       headdb.command.give: true
+      headdb.category.*: true
+      headdb.category.favorites: true
       headdb.favorites: true
       headdb.category.local: true
+      headdb.category.custom: true
   headdb.command.open:
     default: op
   headdb.command.search:
@@ -38,7 +41,21 @@ permissions:
     default: op
   headdb.favorites:
     default: op
+    children:
+      headdb.category.favorites: true
+  headdb.category:
+    default: op
+    children:
+      headdb.category.*: true
+  headdb.category.*:
+    default: op
+    children:
+      headdb.category.local: true
+      headdb.category.custom: true
+      headdb.category.favorites: true
   headdb.category.local:
     default: op
   headdb.category.custom:
+    default: op
+  headdb.category.favorites:
     default: op

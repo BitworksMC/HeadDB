@@ -7,6 +7,7 @@ import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.factory.ItemFactoryRegistry;
 import com.bitworksmc.headdb.core.storage.PlayerData;
 import com.bitworksmc.headdb.core.util.Compatibility;
+import com.bitworksmc.headdb.core.util.PermissionUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -23,7 +24,7 @@ public class LocalHeadsMenu extends PaginatedSimplePage {
 
         for (ItemStack item : items) {
             addButton(new SimpleButton(item, ctx -> {
-                if (!ctx.event().getWhoClicked().hasPermission("headdb.category.local")) {
+                if (!PermissionUtil.hasCategoryPermission(ctx.event().getWhoClicked(), "local")) {
                     plugin.getLocalization().sendMessage(ctx.event().getWhoClicked(), "noPermission");
                     Compatibility.playSound((Player) ctx.event().getWhoClicked(), plugin.getSoundConfig().get("noPermission"));
                     return;
