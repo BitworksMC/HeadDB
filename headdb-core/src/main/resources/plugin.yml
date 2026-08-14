@@ -8,10 +8,9 @@ softdepend: [
   #"PlaceholderAPI",
   "Vault"
 ]
-api-version: 1.21
-folia-supported: true
+api-version: '26.2'
 libraries:
-  - "org.xerial:sqlite-jdbc:3.47.0.0"
+  - "org.xerial:sqlite-jdbc:${sqlite.version}"
 
 spigot-id: 84967
 
@@ -23,39 +22,57 @@ commands:
 
 permissions:
   headdb.admin:
+    description: Grants all HeadDB commands and categories.
     default: op
     children:
       headdb.command.open: true
       headdb.command.search: true
       headdb.command.give: true
+      headdb.command.info: true
+      headdb.command.sounds: true
       headdb.category.*: true
       headdb.category.favorites: true
       headdb.favorites: true
       headdb.category.local: true
       headdb.category.custom: true
   headdb.command.open:
+    description: Allows opening HeadDB and its category menus.
     default: op
   headdb.command.search:
+    description: Allows searching the head database.
     default: op
   headdb.command.give:
+    description: Allows giving a database head by command.
     default: op
+  headdb.command.info:
+    description: Allows viewing HeadDB and server version information.
+    default: op
+  headdb.command.sounds:
+    description: Allows toggling personal HeadDB interface sounds.
+    default: true
   headdb.favorites:
+    description: Legacy alias for headdb.category.favorites.
     default: op
     children:
       headdb.category.favorites: true
   headdb.category:
+    description: Parent alias that grants all HeadDB categories.
     default: op
     children:
       headdb.category.*: true
   headdb.category.*:
+    description: Grants all HeadDB categories; category-specific false values take precedence.
     default: op
     children:
       headdb.category.local: true
       headdb.category.custom: true
       headdb.category.favorites: true
   headdb.category.local:
+    description: Allows access to heads generated from players known to this server.
     default: op
   headdb.category.custom:
+    description: Allows access to the custom-categories menu.
     default: op
   headdb.category.favorites:
+    description: Allows access to the favorites menu.
     default: op

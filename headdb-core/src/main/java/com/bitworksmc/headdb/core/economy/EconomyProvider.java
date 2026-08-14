@@ -54,6 +54,9 @@ public interface EconomyProvider {
      */
     default CompletableFuture<Boolean> purchase(Player player, double cost) {
         Objects.requireNonNull(player, "Player must not be null!");
+        if (!Double.isFinite(cost) || cost < 0D) {
+            return CompletableFuture.completedFuture(false);
+        }
 
         return canAfford(player, cost).thenCompose(afforded -> {
             if (!afforded) {

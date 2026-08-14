@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release (example: v6.0.1)"
+        description: "Tag to release (example: v6.0.2)"
         required: true
         type: string
 
@@ -28,15 +28,15 @@ jobs:
           ref: ${{ env.RELEASE_TAG }}
           fetch-depth: 0
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
           cache: maven
 
       - name: Build release artifacts
-        run: mvn -B -ntp -DskipTests package
+        run: mvn -B -ntp verify
 
       - name: Resolve release metadata
         id: metadata

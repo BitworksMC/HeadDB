@@ -3,8 +3,10 @@
 # The remote database is updated at 00:00 UTC every day, schedule it after that.
 updater: true
 
-# If enabled head items will be preloaded on startup.
-preloadHeads: true
+# Pre-create every head item during startup. Keep this disabled for the latest
+# database (86,000+ heads), as enabling it greatly increases startup time and memory use.
+# Menu pages create their head items lazily when opened.
+preloadHeads: false
 
 # If enabled players will return to the page they were already on when opening the menu multiple times.
 # Example: Player is on page 10 of the category, next time they open that category they will start from that page instead of the first.

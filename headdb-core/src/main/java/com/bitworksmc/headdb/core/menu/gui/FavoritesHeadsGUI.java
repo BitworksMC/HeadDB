@@ -1,7 +1,6 @@
 package com.bitworksmc.headdb.core.menu.gui;
 
 import com.github.thesilentpro.grim.button.SimpleButton;
-import com.github.thesilentpro.grim.gui.PaginatedGUI;
 import com.github.thesilentpro.grim.page.Page;
 import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.core.HeadDB;
@@ -18,23 +17,19 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
-public class FavoritesHeadsGUI extends PaginatedGUI {
+public class FavoritesHeadsGUI extends SafePaginatedGUI {
     private static final String DISCORD_URL = "https://discord.gg/j8BAsz8Ac7";
 
     public FavoritesHeadsGUI(HeadDB plugin, String key, Component title, List<Head> heads, List<ItemStack> items) {
-        super(new NamespacedKey(plugin, "gui_" + key));
+        super(new NamespacedKey(plugin, Utils.normalizeNamespacedKey("gui_" + key)));
 
         int pageSize = plugin.getCfg().getHeadsMenuRows() * 9;
-        List<List<Head>> headChunks     = Utils.chunk(heads, pageSize);
-        List<List<ItemStack>> itemChunks = Utils.chunk(items, pageSize);
-        int totalPages = Math.max(headChunks.size(), itemChunks.size());
-
-        for (int pageIndex = 0; pageIndex < totalPages; pageIndex++) {
-            List<Head> headsChunk = pageIndex < headChunks.size() ? headChunks.get(pageIndex) : Collections.emptyList();
-            List<ItemStack> itemsChunk = pageIndex < itemChunks.size() ? itemChunks.get(pageIndex) : Collections.emptyList();
+        for (PageRange range : calculatePageRanges(heads.size(), items.size(), pageSize)) {
+            List<Head> headsChunk = heads.subList(range.headFrom(), range.headTo());
+            List<ItemStack> itemsChunk = items.subList(range.itemFrom(), range.itemTo());
 
             FavoritesHeadsMenu page = new FavoritesHeadsMenu(plugin, this, title, headsChunk, itemsChunk);
 
@@ -194,5 +189,34 @@ public class FavoritesHeadsGUI extends PaginatedGUI {
         }
 
         getPages().values().forEach(Page::reRender);
+    }
+
+    /**
+     * Packs database and local favorites into one shared page capacity. Chunking
+     * each list independently can put twice the configured number of buttons on
+     * a page when a player has favorites of both kinds.
+     */
+    static List<PageRange> calculatePageRanges(int headCount, int itemCount, int pageSize) {
+        if (headCount < 0 || itemCount < 0) {
+            throw new IllegalArgumentException("Favorite counts cannot be negative");
+        }
+        if (pageSize <= 0) {
+            throw new IllegalArgumentException("Page size must be positive");
+        }
+
+        int total = Math.addExact(headCount, itemCount);
+        List<PageRange> pages = new ArrayList<>((total + pageSize - 1) / pageSize);
+        for (int offset = 0; offset < total; offset += pageSize) {
+            int pageEnd = Math.min(total, offset + pageSize);
+            int headFrom = Math.min(offset, headCount);
+            int headTo = Math.min(pageEnd, headCount);
+            int itemFrom = Math.max(0, offset - headCount);
+            int itemTo = Math.max(0, pageEnd - headCount);
+            pages.add(new PageRange(headFrom, headTo, itemFrom, itemTo));
+        }
+        return pages;
+    }
+
+    record PageRange(int headFrom, int headTo, int itemFrom, int itemTo) {
     }
 }

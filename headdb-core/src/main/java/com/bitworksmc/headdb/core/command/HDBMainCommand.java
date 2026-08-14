@@ -10,13 +10,14 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 public class HDBMainCommand implements CommandExecutor, TabCompleter {
 
-    private static final Pattern USAGE_PATTERN = Pattern.compile(" ");
+    private static final Pattern USAGE_PATTERN = Pattern.compile("\\s+");
     private final HeadDB plugin;
 
     public HDBMainCommand(HeadDB plugin) {
@@ -33,6 +34,11 @@ public class HDBMainCommand implements CommandExecutor, TabCompleter {
             if (!(sender.hasPermission("headdb.command.open"))) {
                 plugin.getLocalization().sendMessage(sender, "noPermission");
                 Compatibility.playSound(player, plugin.getSoundConfig().get("noPermission"));
+                return true;
+            }
+            if (!plugin.getHeadApi().isReady()) {
+                plugin.getLocalization().sendMessage(sender, "databaseLoading");
+                Compatibility.playSound(player, plugin.getSoundConfig().get("menu.none"));
                 return true;
             }
             plugin.getMenuManager().getMainMenu().open(player);
@@ -55,17 +61,8 @@ public class HDBMainCommand implements CommandExecutor, TabCompleter {
         }
 
         // Validate usage format
-        if (subCommand.getUsage() != null) {
-            String[] parts = USAGE_PATTERN.split(subCommand.getUsage());
-
-            int required = 0;
-            for (String part : parts) {
-                if (!part.startsWith("[") && !part.endsWith("]")) { // Even if it doesn't have arrow brackets("<>"), assume the argument is required.
-                    required++;
-                }
-            }
-
-            if (args.length < required) {
+        if (subCommand.getUsage() != null && !subCommand.getUsage().isBlank()) {
+            if (args.length < minimumArgumentCount(subCommand.getUsage())) {
                 plugin.getLocalization().sendMessage(sender, "commandUsage", msg -> msg.replaceText(builder -> builder.matchLiteral("{usage}").replacement("/" + label + " " + sub + " " + subCommand.getUsage())));
                 return true;
             }
@@ -75,24 +72,46 @@ public class HDBMainCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private static final List<String> INVALID_SUB_COMMAND_COMPLETION = Collections.singletonList("Invalid sub command!");
-
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
         if (args.length == 1) {
-            return plugin.getSubCommandManager().getRealNames();
+            String prefix = args[0].toLowerCase(Locale.ROOT);
+            List<String> completions = new ArrayList<>();
+            for (String name : plugin.getSubCommandManager().getRealNames()) {
+                HDBSubCommand subCommand = plugin.getSubCommandManager().get(name);
+                if (name.toLowerCase(Locale.ROOT).startsWith(prefix)
+                        && sender.hasPermission("headdb.command." + subCommand.getName())) {
+                    completions.add(name);
+                }
+            }
+            return completions;
         }
 
         HDBSubCommand subCommand = plugin.getSubCommandManager().get(args[0]);
         if (subCommand == null) {
-            return INVALID_SUB_COMMAND_COMPLETION;
+            return List.of();
         }
 
         if (!sender.hasPermission("headdb.command." + subCommand.getName())) {
-            return null; // no permission
+            return List.of();
         }
 
         return subCommand.handleCompletions(sender, args);
+    }
+
+    static int minimumArgumentCount(String usage) {
+        // args[0] is the sub-command itself; every non-[optional] usage token
+        // adds one required argument after it.
+        int required = 1;
+        if (usage == null || usage.isBlank()) {
+            return required;
+        }
+        for (String part : USAGE_PATTERN.split(usage.trim())) {
+            if (!(part.startsWith("[") && part.endsWith("]"))) {
+                required++;
+            }
+        }
+        return required;
     }
 
 }

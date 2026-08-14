@@ -70,8 +70,8 @@ public class VaultEconomyProvider implements EconomyProvider {
     @Override
     public CompletableFuture<Boolean> canAfford(Player player, double amount) {
         Objects.requireNonNull(player, "Player cannot be null");
-        if (amount < 0) {
-            return failed("Amount must be non-negative");
+        if (!Double.isFinite(amount) || amount < 0D) {
+            return failed("Amount must be finite and non-negative");
         }
         if (modernEconomy != null) {
             return completeModernAction(() -> invokeModernHas(player.getUniqueId(), amount), "check balance");
@@ -86,8 +86,8 @@ public class VaultEconomyProvider implements EconomyProvider {
     @Override
     public CompletableFuture<Boolean> withdraw(Player player, double amount) {
         Objects.requireNonNull(player, "Player cannot be null");
-        if (amount < 0) {
-            return failed("Amount must be non-negative");
+        if (!Double.isFinite(amount) || amount < 0D) {
+            return failed("Amount must be finite and non-negative");
         }
         if (modernEconomy != null) {
             return completeModernAction(() -> invokeModernWithdraw(player.getUniqueId(), amount), "withdraw funds");
@@ -103,8 +103,8 @@ public class VaultEconomyProvider implements EconomyProvider {
     @Override
     public CompletableFuture<Boolean> deposit(Player player, double amount) {
         Objects.requireNonNull(player, "Player cannot be null");
-        if (amount < 0) {
-            return failed("Amount must be non-negative");
+        if (!Double.isFinite(amount) || amount < 0D) {
+            return failed("Amount must be finite and non-negative");
         }
         if (modernEconomy != null) {
             return completeModernAction(() -> invokeModernDeposit(player.getUniqueId(), amount), "deposit funds");

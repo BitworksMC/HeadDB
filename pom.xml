@@ -7,7 +7,7 @@
 
     <groupId>com.bitworksmc</groupId>
     <artifactId>HeadDB</artifactId>
-    <version>6.0.1</version>
+    <version>6.0.2</version>
     <packaging>pom</packaging>
 
     <name>HeadDB</name>
@@ -20,8 +20,11 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>25</maven.compiler.release>
+        <adventure.version>5.2.0</adventure.version>
+        <annotations.version>26.1.0</annotations.version>
+        <paper.version>26.2.build.112-stable</paper.version>
+        <sqlite.version>3.53.2.1</sqlite.version>
     </properties>
 
 </project>

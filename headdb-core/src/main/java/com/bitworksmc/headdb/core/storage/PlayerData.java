@@ -1,28 +1,30 @@
 package com.bitworksmc.headdb.core.storage;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class PlayerData {
 
     private final UUID uniqueId;
-    private String language;
-    private List<Integer> favorites;
-    private List<UUID> localFavorites;
-    private boolean soundEnabled;
+    private volatile String language;
+    private volatile CopyOnWriteArrayList<Integer> favorites;
+    private volatile CopyOnWriteArrayList<UUID> localFavorites;
+    private volatile boolean soundEnabled;
 
     public PlayerData(UUID uniqueId, String language, boolean soundEnabled, List<Integer> favorites, List<UUID> localFavorites) {
-        this.uniqueId = uniqueId;
-        this.language = language;
+        this.uniqueId = Objects.requireNonNull(uniqueId, "uniqueId");
+        this.language = normalizeLanguage(language);
         this.soundEnabled = soundEnabled;
-        this.favorites = new CopyOnWriteArrayList<>(favorites != null ? favorites : new ArrayList<>());
-        this.localFavorites = new CopyOnWriteArrayList<>(localFavorites != null ? localFavorites : new ArrayList<>());
+        setFavorites(favorites);
+        setLocalFavorites(localFavorites);
     }
 
     public void addLocalFavorite(UUID uuid) {
-        this.localFavorites.add(uuid);
+        if (uuid != null) {
+            this.localFavorites.addIfAbsent(uuid);
+        }
     }
 
     public void removeLocalFavorite(UUID uuid) {
@@ -34,15 +36,15 @@ public class PlayerData {
     }
 
     public void setLocalFavorites(List<UUID> localFavorites) {
-        this.localFavorites = new CopyOnWriteArrayList<>(localFavorites != null ? localFavorites : new ArrayList<>());
+        this.localFavorites = copyDistinctNonNull(localFavorites);
     }
 
     public void setLanguage(String language) {
-        this.language = language;
+        this.language = normalizeLanguage(language);
     }
 
     public void addFavorite(int id) {
-        this.favorites.add(id);
+        this.favorites.addIfAbsent(id);
     }
 
     public void removeFavorite(int id) {
@@ -50,7 +52,7 @@ public class PlayerData {
     }
 
     public void setFavorites(List<Integer> favorites) {
-        this.favorites = new CopyOnWriteArrayList<>(favorites != null ? favorites : new ArrayList<>());
+        this.favorites = copyDistinctNonNull(favorites);
     }
 
     public void setSoundEnabled(boolean soundEnabled) {
@@ -71,6 +73,22 @@ public class PlayerData {
 
     public UUID getUniqueId() {
         return uniqueId;
+    }
+
+    private static String normalizeLanguage(String language) {
+        return language == null || language.isBlank() ? "en" : language;
+    }
+
+    private static <T> CopyOnWriteArrayList<T> copyDistinctNonNull(List<T> values) {
+        CopyOnWriteArrayList<T> result = new CopyOnWriteArrayList<>();
+        if (values != null) {
+            for (T value : values) {
+                if (value != null) {
+                    result.addIfAbsent(value);
+                }
+            }
+        }
+        return result;
     }
 
 }

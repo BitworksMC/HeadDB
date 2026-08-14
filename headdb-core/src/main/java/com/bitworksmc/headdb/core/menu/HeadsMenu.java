@@ -8,23 +8,62 @@ import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.factory.ItemFactoryRegistry;
 import com.bitworksmc.headdb.core.storage.PlayerData;
 import com.bitworksmc.headdb.core.util.Compatibility;
+import com.bitworksmc.headdb.core.util.PermissionUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
 public class HeadsMenu extends PaginatedSimplePage {
 
+    private final HeadDB plugin;
+    private final List<Head> heads;
+    private final @Nullable String permissionCategory;
+    private boolean initialized;
+
     public HeadsMenu(HeadDB plugin, GUI<Integer> gui, Component title, List<Head> heads) {
+        this(plugin, gui, title, heads, null);
+    }
+
+    public HeadsMenu(HeadDB plugin, GUI<Integer> gui, Component title, List<Head> heads, @Nullable String permissionCategory) {
         super(gui, title, 6, 48, 49, 50);
+        this.plugin = plugin;
+        this.heads = List.copyOf(heads);
+        this.permissionCategory = permissionCategory;
         preventInteraction();
+
+        // Head items are relatively expensive to create. Categories can contain
+        // thousands of pages, so populate only the page a player actually opens.
+        this.initialized = false;
+    }
+
+    @Override
+    public InventoryView open(Player player, boolean render) {
+        initializeButtons();
+        return super.open(player, render);
+    }
+
+    private synchronized void initializeButtons() {
+        if (initialized) {
+            return;
+        }
+
+        int slot = 0;
         for (Head head : heads) {
-            addButton(new SimpleButton(head.getItem(), ctx -> {
+            setButton(slot++, new SimpleButton(head.getItem(), ctx -> {
                 Player player = (Player) ctx.event().getWhoClicked();
                 if (ctx.event().getClick() == ClickType.DROP) {
                     // TODO: Manage head
+                    return;
+                }
+                String requiredCategory = permissionCategory != null ? permissionCategory : head.getCategory();
+                if (!PermissionUtil.hasCategoryPermission(player, requiredCategory)) {
+                    plugin.getLocalization().sendMessage(player, "noPermission");
+                    Compatibility.playSound(player, plugin.getSoundConfig().get("noPermission"));
                     return;
                 }
                 if (ctx.event().getClick() == ClickType.RIGHT) {
@@ -42,7 +81,7 @@ public class HeadsMenu extends PaginatedSimplePage {
                 }
 
                 if (plugin.getEconomyProvider() != null) {
-                    new PurchaseHeadMenu(plugin, player, head, this).open(player);
+                    new PurchaseHeadMenu(plugin, player, head, this, requiredCategory).open(player);
                     Compatibility.playSound((Player) ctx.event().getWhoClicked(), plugin.getSoundConfig().get("menu.open"));
                 } else {
                     ItemStack item = head.getItem();
@@ -52,7 +91,7 @@ public class HeadsMenu extends PaginatedSimplePage {
                 }
             }));
         }
-        reRender();
+        initialized = true;
     }
 
 }

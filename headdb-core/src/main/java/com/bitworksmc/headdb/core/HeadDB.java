@@ -30,17 +30,20 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
+import java.util.concurrent.ExecutorService;
 
 public class HeadDB extends JavaPlugin {
 
     // Avoid using class for this logger: it will use the fully qualified name with the default logger cfg.
     private static final Logger LOGGER = LoggerFactory.getLogger("HeadDB");
+    private static final int PRELOAD_BATCH_SIZE = 250;
 
     private ConfigManager configManager;
     private HeadDatabase headDatabase;
     private HeadAPI headApi;
+    private ExecutorService databaseExecutor;
     private HDBSubCommandManager subCommandManager;
     private MenuManager menuManager;
     private PlayerStorage playerStorage;
@@ -79,16 +82,17 @@ public class HeadDB extends JavaPlugin {
 
         // Init database
         int databaseThreads = config.getDatabaseThreads();
+        this.databaseExecutor = Utils.executorService(databaseThreads, "Head Database Worker");
         this.headDatabase = new BaseHeadDatabase(
-                Utils.executorService(databaseThreads, "Head Database Worker"),
+                databaseExecutor,
                 config.getDatabaseSourceUrls(),
                 config.resolveEnabledIndexes()
         );
-        this.headDatabase.update().thenAcceptAsync(heads -> DATABASE_UPDATE_ACTION.accept(config, heads), Compatibility.getMainThreadExecutor(this));
+        this.headDatabase.update().thenAcceptAsync(heads -> handleDatabaseUpdate(config, heads), Compatibility.getMainThreadExecutor(this));
         this.headApi = new BaseHeadAPI(config.getApiThreads(), headDatabase);
         this.menuManager = new MenuManager(this);
-        this.headDatabase.onReady().thenRunAsync(() -> this.menuManager.registerDefaults(this), Compatibility.getMainThreadExecutor(this));
-        this.playerStorage = new PlayerStorage();
+        this.headDatabase.onReady().thenAcceptAsync(heads -> this.menuManager.registerDefaults(this, heads), Compatibility.getMainThreadExecutor(this));
+        this.playerStorage = new PlayerStorage(getDataFolder());
         this.playerStorage.load();
         Compatibility.runAsyncRepeating(this, this.playerStorage::save, config.getPlayerStorageSaveInterval() * 20L, config.getPlayerStorageSaveInterval() * 20L);
 
@@ -109,12 +113,17 @@ public class HeadDB extends JavaPlugin {
         command.setTabCompleter(mainCommand);
 
         new PageListeners().register(this);
-        new PaperInputListener().register(this);
+        if (Compatibility.IS_PAPER) {
+            new PaperInputListener().register(this);
+        }
 
         // Start updater task
         if (config.isUpdaterEnabled()) {
             Compatibility.runAsyncRepeating(this, () ->
-                    this.headDatabase.update().thenAcceptAsync(heads -> DATABASE_UPDATE_ACTION.accept(config, heads), Compatibility.getMainThreadExecutor(this)),
+                    this.headDatabase.update().thenAcceptAsync(heads -> {
+                        handleDatabaseUpdate(config, heads);
+                        this.menuManager.registerDefaults(this, heads);
+                    }, Compatibility.getMainThreadExecutor(this)),
                     86400L * 20L,
                     86400L * 20L
             );
@@ -122,7 +131,11 @@ public class HeadDB extends JavaPlugin {
 
         if (!Compatibility.IS_PAPER) {
             String bukkitName = Bukkit.getName();
-            String bukkitVersion = Bukkit.getBukkitVersion().substring(0, Bukkit.getBukkitVersion().indexOf("-"));
+            String fullBukkitVersion = Bukkit.getBukkitVersion();
+            int qualifierSeparator = fullBukkitVersion.indexOf('-');
+            String bukkitVersion = qualifierSeparator > 0
+                    ? fullBukkitVersion.substring(0, qualifierSeparator)
+                    : fullBukkitVersion;
             LOGGER.warn("""
                     \s
                     \s
@@ -139,9 +152,20 @@ public class HeadDB extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        PageRegistry.INSTANCE.getPages().keySet().forEach(InventoryView::close);
+        // Closing a view fires InventoryCloseEvent, which removes that view from the
+        // registry. Iterate a snapshot so the listener cannot mutate our iterator.
+        for (InventoryView view : new ArrayList<>(PageRegistry.INSTANCE.getPages().keySet())) {
+            view.close();
+            PageRegistry.INSTANCE.remove(view);
+        }
         if (this.playerStorage != null) {
             this.playerStorage.save();
+        }
+        if (this.headApi != null) {
+            this.headApi.getExecutor().shutdownNow();
+        }
+        if (this.databaseExecutor != null) {
+            this.databaseExecutor.shutdownNow();
         }
     }
 
@@ -177,30 +201,45 @@ public class HeadDB extends JavaPlugin {
         return headApi;
     }
 
-    private static final BiConsumer<Config, List<Head>> DATABASE_UPDATE_ACTION = (config, heads) -> {
+    private void handleDatabaseUpdate(Config config, List<Head> heads) {
         LOGGER.info("Loaded {} heads!", heads.size());
 
-        if (config.isPreloadHeads()) {
-            int total = heads.size();
-            if (total == 0) {
-                LOGGER.info("No heads to preload.");
-                return;
-            }
-
-            int[] milestones = {25, 50, 75, 100};
-            int nextMilestoneIndex = 0;
-
-            for (int i = 0; i < total; i++) {
-                Head head = heads.get(i);
-                head.getItem(); // Loads the ItemStack in memory
-
-                int percent = (int) (((i + 1) / (double) total) * 100);
-                if (nextMilestoneIndex < milestones.length && percent >= milestones[nextMilestoneIndex]) {
-                    LOGGER.info("Preloading heads... {}%", milestones[nextMilestoneIndex]);
-                    nextMilestoneIndex++;
-                }
-            }
+        if (!config.isPreloadHeads()) {
+            return;
         }
-    };
+        if (heads.isEmpty()) {
+            LOGGER.info("No heads to preload.");
+            return;
+        }
+
+        // Item creation must happen on the server thread, but doing 86,000+
+        // items in one tick freezes the server. Spread opt-in preloading out.
+        preloadBatch(heads, 0, 0);
+    }
+
+    private void preloadBatch(List<Head> heads, int start, int nextMilestoneIndex) {
+        if (!isEnabled()) {
+            return;
+        }
+
+        int total = heads.size();
+        int end = Math.min(start + PRELOAD_BATCH_SIZE, total);
+        for (int i = start; i < end; i++) {
+            heads.get(i).getItem();
+        }
+
+        int[] milestones = {25, 50, 75, 100};
+        int milestoneIndex = nextMilestoneIndex;
+        int percent = (int) ((end / (double) total) * 100);
+        while (milestoneIndex < milestones.length && percent >= milestones[milestoneIndex]) {
+            LOGGER.info("Preloading heads... {}%", milestones[milestoneIndex]);
+            milestoneIndex++;
+        }
+
+        if (end < total) {
+            int nextIndex = milestoneIndex;
+            Compatibility.runGlobalTaskLater(this, () -> preloadBatch(heads, end, nextIndex), 1L);
+        }
+    }
 
 }

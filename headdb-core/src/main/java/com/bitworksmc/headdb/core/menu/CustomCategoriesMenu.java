@@ -36,7 +36,13 @@ public class CustomCategoriesMenu extends PaginatedSimplePage {
                     return;
                 }
 
-                plugin.getMenuManager().get(category.getIdentifier()).open((Player) ctx.event().getWhoClicked());
+                var categoryGui = plugin.getMenuManager().get(category.getIdentifier());
+                if (categoryGui == null) {
+                    plugin.getLocalization().sendMessage(ctx.event().getWhoClicked(), "databaseLoading");
+                    Compatibility.playSound((Player) ctx.event().getWhoClicked(), plugin.getSoundConfig().get("menu.none"));
+                    return;
+                }
+                categoryGui.open((Player) ctx.event().getWhoClicked());
                 Compatibility.playSound((Player) ctx.event().getWhoClicked(), plugin.getSoundConfig().get("menu.open"));
             }));
         }

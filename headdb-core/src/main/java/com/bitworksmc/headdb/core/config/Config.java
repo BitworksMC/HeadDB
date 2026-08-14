@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.*;
+import java.util.regex.Pattern;
 
 public class Config {
 
@@ -29,6 +30,7 @@ public class Config {
     private static final String DEFAULT_NEXT_TEXTURE = "62bfb7ed2bd9f1d1f85c3d6ffb1626f252c5ecfd79d51a3f56ebf8e0c3c91";
     private static final String DEFAULT_CUSTOM_CATEGORY_TEXTURE = "62bfb7ed2bd9f1d1f85c3d6ffb1626f252c5ecfd79d51a3f56ebf8e0c3c91";
     private static final String DEFAULT_SEARCH_TEXTURE = "9d9cc58ad25a1ab16d36bb5d6d493c8f5898c2bf302b64e325921c41c35867";
+    private static final Pattern CATEGORY_ID_PATTERN = Pattern.compile("[a-z0-9._-]+");
 
     private final HeadDB plugin;
     private final FileConfiguration config;
@@ -76,13 +78,13 @@ public class Config {
     }
 
     private void loadGeneral() {
-        playerStorageSaveInterval = config.getLong("storage.player.saveInterval", 1800L);
+        playerStorageSaveInterval = positiveLong("storage.player.saveInterval", 1800L);
         updaterEnabled = config.getBoolean("updater", true);
         trackPage = config.getBoolean("trackPage", true);
-        preloadHeads = config.getBoolean("preloadHeads", true);
-        databaseThreads = config.getInt("database.threads", 1);
-        apiThreads = config.getInt("database.apiThreads", 1);
-        maxBuyAmount = config.getInt("maxBuyAmount", 2304);
+        preloadHeads = config.getBoolean("preloadHeads", false);
+        databaseThreads = positiveInt("database.threads", 1);
+        apiThreads = positiveInt("database.apiThreads", 1);
+        maxBuyAmount = positiveInt("maxBuyAmount", 2304);
         omit = config.getIntegerList("head.omit");
         loadDatabaseSources();
 
@@ -132,7 +134,11 @@ public class Config {
         indexById = config.getBoolean("indexing.by.id", true);
         indexByCategory = config.getBoolean("indexing.by.category", true);
         indexByTexture = config.getBoolean("indexing.by.texture", true);
-        indexByTag = config.getBoolean("indexing.by.tag", true);
+        // "tags" is the documented key. Keep accepting the old singular spelling
+        // for servers that happened to configure it before this was corrected.
+        indexByTag = config.contains("indexing.by.tags")
+                ? config.getBoolean("indexing.by.tags")
+                : config.getBoolean("indexing.by.tag", true);
 
         LOGGER.trace("Loaded Indexing Config:");
         LOGGER.trace(" - indexingEnabled = {}", indexingEnabled);
@@ -148,6 +154,28 @@ public class Config {
         headsMenuRows = config.getInt("headsMenu.rows", 4);
         dividerRow = config.getInt("headsMenu.divider.row", 5);
 
+        // Menus have six rows, with the last row reserved for navigation. Invalid
+        // values otherwise lead to zero-sized chunks (an infinite loop) or slots
+        // outside the inventory.
+        if (headsMenuRows < 1 || headsMenuRows > 5) {
+            LOGGER.warn("Invalid headsMenu.rows value {}. Using 4 (valid range: 1-5).", headsMenuRows);
+            headsMenuRows = 4;
+        }
+        if (dividerRow < 1 || dividerRow > 5) {
+            LOGGER.warn("Invalid headsMenu.divider.row value {}. Using 5 (valid range: 1-5).", dividerRow);
+            dividerRow = 5;
+        }
+        if (headsMenuDividerEnabled && dividerRow <= headsMenuRows) {
+            if (headsMenuRows < 5) {
+                int adjustedRow = headsMenuRows + 1;
+                LOGGER.warn("headsMenu.divider.row {} overlaps the {} content rows. Using row {}.", dividerRow, headsMenuRows, adjustedRow);
+                dividerRow = adjustedRow;
+            } else {
+                LOGGER.warn("Disabling the heads menu divider because all five content rows are in use.");
+                headsMenuDividerEnabled = false;
+            }
+        }
+
         headsMenuDividerMaterial = parseMaterial("headsMenu.divider.item.material", "BLACK_STAINED_GLASS_PANE");
         headsMenuDividerName = config.getString("headsMenu.divider.item.name", " ");
 
@@ -162,7 +190,8 @@ public class Config {
 
     private void loadHeadsLore() {
         List<String> lore;
-        if (plugin.getCfg().getEconomyProvider() == null || plugin.getCfg().getEconomyProvider().isBlank()) {
+        headsLore.clear();
+        if (!isEconomyEnabled()) {
             headName = MiniMessage.miniMessage().deserialize(config.getString("head.name.default", "{name}"));
             lore = config.getStringList("head.lore.default");
         } else {
@@ -207,15 +236,21 @@ public class Config {
     }
 
     private void loadEconomy() {
-        economyProvider = config.getString("economy.provider", null);
+        String configuredProvider = config.getString("economy.provider", "NONE");
+        economyProvider = configuredProvider == null || configuredProvider.isBlank()
+                ? "NONE"
+                : configuredProvider.trim();
         categoryPrices.clear();
-        if (!economyProvider.isEmpty() && !economyProvider.equalsIgnoreCase("NONE")) {
+        headPrices.clear();
+        if (isEconomyEnabled()) {
             ConfigurationSection section = config.getConfigurationSection("economy.cost.category");
             if (section != null) {
                 for (String category : section.getKeys(false)) {
                     double price = section.getDouble(category, 0D);
-                    categoryPrices.put(category, price);
-                    LOGGER.trace("Loaded price: category='{}' price={}", category, price);
+                    if (isValidPrice(price, "category", category)) {
+                        categoryPrices.put(category.toLowerCase(Locale.ROOT), price);
+                        LOGGER.trace("Loaded price: category='{}' price={}", category, price);
+                    }
                 }
             }
             ConfigurationSection headSection = config.getConfigurationSection("economy.cost.head");
@@ -223,8 +258,10 @@ public class Config {
                 for (String headId : headSection.getKeys(false)) {
                     try {
                         double price = headSection.getDouble(headId, 0D);
-                        headPrices.put(Integer.parseInt(headId), price);
-                        LOGGER.trace("Loaded price: head='{}' price='{}'", headId, price);
+                        if (isValidPrice(price, "head", headId)) {
+                            headPrices.put(Integer.parseInt(headId), price);
+                            LOGGER.trace("Loaded price: head='{}' price='{}'", headId, price);
+                        }
                     } catch (NumberFormatException nfe) {
                         LOGGER.error("Invalid head id '{}' in config", headId);
                     }
@@ -236,13 +273,58 @@ public class Config {
     }
 
     private Material parseMaterial(String path, String fallback) {
-        Material mat = Optional.ofNullable(Material.matchMaterial(config.getString(path, fallback))).orElse(Material.BARRIER);
+        String configuredMaterial = config.getString(path, fallback);
+        Material mat = configuredMaterial == null
+                ? Material.BARRIER
+                : Optional.ofNullable(Material.matchMaterial(configuredMaterial)).orElse(Material.BARRIER);
         LOGGER.trace("Parsed material for '{}': {}", path, mat);
         return mat;
     }
 
+    private boolean isEconomyEnabled() {
+        return economyProvider != null
+                && !economyProvider.isBlank()
+                && !economyProvider.equalsIgnoreCase("NONE");
+    }
+
+    private boolean isValidPrice(double price, String type, String id) {
+        if (Double.isFinite(price) && price >= 0D) {
+            return true;
+        }
+        LOGGER.warn("Ignoring invalid {} price for '{}': {} (prices must be finite and non-negative)", type, id, price);
+        return false;
+    }
+
+    private int positiveInt(String path, int fallback) {
+        int value = config.getInt(path, fallback);
+        if (value > 0) {
+            return value;
+        }
+        LOGGER.warn("Invalid {} value {}. Using {}.", path, value, fallback);
+        return fallback;
+    }
+
+    private long positiveLong(String path, long fallback) {
+        long value = config.getLong(path, fallback);
+        if (value > 0L) {
+            return value;
+        }
+        LOGGER.warn("Invalid {} value {}. Using {}.", path, value, fallback);
+        return fallback;
+    }
+
     public List<CustomCategory> resolveCustomCategories() {
+        return resolveCustomCategories(plugin.getHeadApi().getHeads().join());
+    }
+
+    public List<CustomCategory> resolveCustomCategories(List<Head> loadedHeads) {
         List<CustomCategory> categories = new ArrayList<>();
+        Map<String, Head> headsByTexture = new HashMap<>();
+        if (loadedHeads != null) {
+            for (Head loadedHead : loadedHeads) {
+                headsByTexture.putIfAbsent(loadedHead.getTexture(), loadedHead);
+            }
+        }
         File file = new File(plugin.getDataFolder(), "categories.yml");
 
         if (!file.exists()) {
@@ -257,7 +339,7 @@ public class Config {
         FileConfiguration cfg = YamlConfiguration.loadConfiguration(file);
 
         for (String id : cfg.getKeys(false)) {
-            CustomCategory category = parseCategory(cfg, id);
+            CustomCategory category = parseCategory(cfg, id, headsByTexture);
             if (category != null) {
                 categories.add(category);
             }
@@ -266,7 +348,13 @@ public class Config {
         return categories;
     }
 
-    private @Nullable CustomCategory parseCategory(FileConfiguration cfg, String id) {
+    private @Nullable CustomCategory parseCategory(FileConfiguration cfg, String id, Map<String, Head> headsByTexture) {
+        String identifier = id.trim().toLowerCase(Locale.ROOT);
+        if (!CATEGORY_ID_PATTERN.matcher(identifier).matches()) {
+            LOGGER.error("Invalid custom category ID '{}'. Use only letters, numbers, '.', '_' or '-'.", id);
+            return null;
+        }
+
         String base = id + ".icon";
         String iconName = cfg.getString(base + ".name");
         if (iconName == null) {
@@ -278,9 +366,9 @@ public class Config {
         String head = cfg.getString(base + ".head");
 
         if (head != null && !head.isEmpty()) {
-            Optional<Head> headOpt = plugin.getHeadApi().findByTexture(head).join();
-            if (headOpt.isPresent()) {
-                icon = Compatibility.setItemDetails(headOpt.get().getItem(),
+            Head iconHead = headsByTexture.get(head);
+            if (iconHead != null) {
+                icon = Compatibility.setItemDetails(iconHead.getItem(),
                         MiniMessage.miniMessage().deserialize(iconName), Component.empty());
             } else {
                 LOGGER.warn("Head not found for category '{}'", id);
@@ -306,11 +394,16 @@ public class Config {
 
         List<Head> heads = new ArrayList<>();
         for (String texture : cfg.getStringList(id + ".heads")) {
-            plugin.getHeadApi().findByTexture(texture).join().ifPresent(heads::add);
+            Head categoryHead = headsByTexture.get(texture);
+            if (categoryHead != null) {
+                heads.add(categoryHead);
+            } else {
+                LOGGER.warn("Head texture '{}' was not found for custom category '{}'", texture, id);
+            }
         }
 
         boolean enabled = cfg.getBoolean(id + ".enabled", false);
-        return new CustomCategory(id, enabled, iconName, icon, heads);
+        return new CustomCategory(identifier, enabled, iconName, icon, heads);
     }
 
     public @Nullable Index[] resolveEnabledIndexes() {
@@ -365,7 +458,9 @@ public class Config {
     public Material getSearchItem() { return searchItem; }
 
     public @Nullable String getEconomyProvider() { return economyProvider; }
-    public double getCategoryPrice(String id) { return categoryPrices.getOrDefault(id, 0D); }
+    public double getCategoryPrice(String id) {
+        return id == null ? 0D : categoryPrices.getOrDefault(id.toLowerCase(Locale.ROOT), 0D);
+    }
     public double getHeadPrice(int id) { return headPrices.getOrDefault(id, -1D); }
     public Map<String, Double> getCategoryPrices() { return categoryPrices; }
     public double getHeadOrCategoryPrice(int id, String category) {

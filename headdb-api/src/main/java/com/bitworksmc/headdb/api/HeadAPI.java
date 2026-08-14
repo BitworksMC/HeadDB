@@ -21,7 +21,7 @@ public interface HeadAPI {
     void awaitReady();
 
     /**
-     * Returns true if the database is fully loaded (success or failure).
+     * Returns true once a successful database snapshot is available.
      */
     boolean isReady();
 

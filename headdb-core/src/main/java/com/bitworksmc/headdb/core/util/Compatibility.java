@@ -1,5 +1,6 @@
 package com.bitworksmc.headdb.core.util;
 
+import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.factory.ItemFactoryRegistry;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
@@ -108,6 +109,26 @@ public class Compatibility {
         plugin.getServer().getScheduler().runTaskTimerAsynchronously(plugin, task, initialDelayTicks, periodTicks);
     }
 
+    public static void runGlobalTaskLater(JavaPlugin plugin, Runnable task, long delayTicks) {
+        if (plugin == null) {
+            throw new RuntimeException("Plugin instance is null!");
+        }
+        if (task == null) {
+            return;
+        }
+
+        long safeDelay = Math.max(1L, delayTicks);
+        if (IS_FOLIA) {
+            plugin.getServer().getGlobalRegionScheduler().runDelayed(
+                    plugin,
+                    scheduledTask -> task.run(),
+                    safeDelay
+            );
+        } else {
+            plugin.getServer().getScheduler().runTaskLater(plugin, task, safeDelay);
+        }
+    }
+
     private static long ticksToMillis(long ticks) {
         if (ticks <= 0L) {
             return 0L;
@@ -141,7 +162,7 @@ public class Compatibility {
     }
 
     public static void playSound(Player player, Sound sound) {
-        if (sound == null) {
+        if (player == null || sound == null || !isSoundEnabled(player)) {
             return;
         }
         if (IS_PAPER) {
@@ -156,6 +177,17 @@ public class Compatibility {
             return;
         }
         playSound((Player) sender, sound);
+    }
+
+    private static boolean isSoundEnabled(Player player) {
+        try {
+            HeadDB plugin = JavaPlugin.getPlugin(HeadDB.class);
+            return plugin.getPlayerStorage() == null
+                    || plugin.getPlayerStorage().getPlayer(player.getUniqueId()).isSoundEnabled();
+        } catch (IllegalArgumentException | IllegalStateException ignored) {
+            // Compatibility helpers are also used during early plugin startup.
+            return true;
+        }
     }
 
     // TODO: Refactor usages of the below methods to use item factory instead of delegating to it.

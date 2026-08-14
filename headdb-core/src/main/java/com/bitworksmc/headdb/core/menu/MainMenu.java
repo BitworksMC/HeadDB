@@ -33,21 +33,17 @@ public class MainMenu extends SimplePage {
     private static final String DISCORD_URL = "https://discord.gg/j8BAsz8Ac7";
     private static final int[] CATEGORY_SLOTS = {11, 12, 13, 14, 15, 20, 21, 22, 23, 24, 29, 30, 31, 32, 33};
 
-    public MainMenu(HeadDB plugin) {
+    public MainMenu(HeadDB plugin, List<Head> heads) {
         super(plugin.getLocalization().getConsoleMessage("menu.main.name").orElse(Component.text("HeadDB").color(NamedTextColor.RED)), 6);
         preventInteraction();
-
-        plugin.getHeadApi().onReady().thenAcceptAsync(heads -> {
-            LOGGER.debug("RENDER THREAD = {}", Thread.currentThread().getName());
-            renderCategoryButtons(plugin, heads);
-            renderLocalButton(plugin);
-            renderFavoritesButton(plugin);
-            renderCustomCategoriesButton(plugin);
-            renderSearchButton(plugin);
-            renderInfoButton(plugin);
-            fillBorder(this);
-            reRender();
-        }, Compatibility.getMainThreadExecutor(plugin));
+        renderCategoryButtons(plugin, heads);
+        renderLocalButton(plugin);
+        renderFavoritesButton(plugin);
+        renderCustomCategoriesButton(plugin);
+        renderSearchButton(plugin);
+        renderInfoButton(plugin);
+        fillBorder(this);
+        reRender();
     }
 
     private void renderCategoryButtons(HeadDB plugin, List<Head> heads) {
@@ -85,7 +81,12 @@ public class MainMenu extends SimplePage {
                     return;
                 }
 
-                HeadsGUI gui = plugin.getMenuManager().get(category.replace(" ", "_").replace("&", "_"));
+                HeadsGUI gui = plugin.getMenuManager().get(category);
+                if (gui == null) {
+                    plugin.getLocalization().sendMessage(player, "databaseLoading");
+                    Compatibility.playSound(player, plugin.getSoundConfig().get("menu.none"));
+                    return;
+                }
                 int page = plugin.getCfg().isTrackPage() ? gui.getGuiRegistry().getCurrentPage(player.getUniqueId(), gui.getKey()).orElse(0) : 0;
                 gui.open(player, page);
                 Compatibility.playSound(player, plugin.getSoundConfig().get("menu.open"));
@@ -143,20 +144,25 @@ public class MainMenu extends SimplePage {
                     .map(plugin.getHeadApi()::findById)
                     .toList();
 
-            List<ItemStack> localItems = data.getLocalFavorites().stream()
-                    .map(plugin.getHeadApi()::computeLocalHead)
-                    .filter(Optional::isPresent).map(Optional::get).toList();
+            List<ItemStack> localItems = PermissionUtil.hasCategoryPermission(player, "local")
+                    ? data.getLocalFavorites().stream()
+                            .map(plugin.getHeadApi()::computeLocalHead)
+                            .filter(Optional::isPresent).map(Optional::get).toList()
+                    : List.of();
 
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
                     .thenApply(v -> futures.stream().map(CompletableFuture::join)
                             .filter(Optional::isPresent).map(Optional::get).toList())
                     .thenAcceptAsync(favoriteHeads -> {
-                        if (favoriteHeads.isEmpty() && localItems.isEmpty()) {
+                        List<Head> accessibleFavoriteHeads = favoriteHeads.stream()
+                                .filter(head -> PermissionUtil.hasCategoryPermission(player, head.getCategory()))
+                                .toList();
+                        if (accessibleFavoriteHeads.isEmpty() && localItems.isEmpty()) {
                             plugin.getLocalization().sendMessage(player, "favoritesNone");
                             Compatibility.playSound(player, plugin.getSoundConfig().get("menu.none"));
                             return;
                         }
-                        FavoritesHeadsGUI gui = new FavoritesHeadsGUI(plugin, "favorites_" + playerId, getMsg(plugin, "menu.favorites.name", "HeadDB » Favorites", NamedTextColor.GOLD), favoriteHeads, localItems);
+                        FavoritesHeadsGUI gui = new FavoritesHeadsGUI(plugin, "favorites_" + playerId, getMsg(plugin, "menu.favorites.name", "HeadDB » Favorites", NamedTextColor.GOLD), accessibleFavoriteHeads, localItems);
                         int page = plugin.getCfg().isTrackPage() ? gui.getGuiRegistry().getCurrentPage(playerId, gui.getKey()).orElse(0) : 0;
                         gui.open(player, page);
                         Compatibility.playSound(player, plugin.getSoundConfig().get("menu.open"));
@@ -182,6 +188,11 @@ public class MainMenu extends SimplePage {
             }
 
             CustomCategoriesGUI gui = plugin.getMenuManager().getCustomCategoriesGui();
+            if (gui == null) {
+                plugin.getLocalization().sendMessage(player, "databaseLoading");
+                Compatibility.playSound(player, plugin.getSoundConfig().get("menu.none"));
+                return;
+            }
             if (gui.getPages().isEmpty()) {
                 plugin.getLocalization().sendMessage(player, "customCategoriesNone");
                 Compatibility.playSound(player, plugin.getSoundConfig().get("menu.none"));
@@ -207,6 +218,8 @@ public class MainMenu extends SimplePage {
                 return;
             }
             if (!Compatibility.IS_PAPER) {
+                plugin.getLocalization().sendMessage(ctx.event().getWhoClicked(), "command.search.manual");
+                Compatibility.playSound(ctx.event().getWhoClicked(), plugin.getSoundConfig().get("menu.none"));
                 return;
             }
 
