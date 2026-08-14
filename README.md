@@ -40,6 +40,11 @@ the compatibility libraries needed by Spigot; Paper remains the recommended
 server platform. Folia is not currently supported because the bundled menu
 framework is not region-thread safe.
 
+HeadDB checks GitHub Releases for updates on startup and every 24 hours by
+default. Console notifications and player notifications can be configured under
+`updateChecker` in `config.yml`; players require `headdb.update.notify`. The
+download link is clickable on Paper and displayed as a plain URL on Spigot.
+
 Choose your preferred source:
 
 - **Releases (GitHub)**  
@@ -62,6 +67,7 @@ Choose your preferred source:
 | `headdb.command.give` | Give a database head by command. |
 | `headdb.command.info` | View HeadDB and server version information. |
 | `headdb.command.sounds` | Toggle personal HeadDB interface sounds with `/hdb sounds`. |
+| `headdb.update.notify` | Receive a notification with the latest-release download link. |
 | `headdb.category.*` | Access every category. |
 | `headdb.category.<category_id>` | Access one database or custom category. |
 | `headdb.category.local` | Access heads generated from players known to this server. |

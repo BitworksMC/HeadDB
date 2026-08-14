@@ -30,6 +30,7 @@ permissions:
       headdb.command.give: true
       headdb.command.info: true
       headdb.command.sounds: true
+      headdb.update.notify: true
       headdb.category.*: true
       headdb.category.favorites: true
       headdb.favorites: true
@@ -50,6 +51,9 @@ permissions:
   headdb.command.sounds:
     description: Allows toggling personal HeadDB interface sounds.
     default: true
+  headdb.update.notify:
+    description: Notifies the player when a newer HeadDB release is available.
+    default: op
   headdb.favorites:
     description: Legacy alias for headdb.category.favorites.
     default: op

@@ -73,6 +73,11 @@ menu:
       name: "<gold>Next ▶"
       lore: "<gray>Go to the next page: <green>${{NEXT}}"
 
+update:
+  available: |-
+    <yellow>A new HeadDB version is available: <green>{latest}<gray> (current: {current})
+    <gray>Download: {url}
+
 command:
 
   open:

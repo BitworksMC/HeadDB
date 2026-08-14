@@ -3,6 +3,14 @@
 # The remote database is updated at 00:00 UTC every day, schedule it after that.
 updater: true
 
+# Check GitHub Releases for newer HeadDB versions without blocking server startup.
+# Console notices can be disabled separately. Players also need headdb.update.notify.
+updateChecker:
+  enabled: true
+  intervalHours: 24
+  notifyConsole: true
+  notifyPlayers: true
+
 # Pre-create every head item during startup. Keep this disabled for the latest
 # database (86,000+ heads), as enabling it greatly increases startup time and memory use.
 # Menu pages create their head items lazily when opened.

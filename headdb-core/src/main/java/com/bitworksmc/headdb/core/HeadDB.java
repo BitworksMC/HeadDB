@@ -16,6 +16,7 @@ import com.bitworksmc.headdb.core.economy.VaultEconomyProvider;
 import com.bitworksmc.headdb.core.factory.ItemFactoryRegistry;
 import com.bitworksmc.headdb.core.menu.MenuManager;
 import com.bitworksmc.headdb.core.storage.PlayerStorage;
+import com.bitworksmc.headdb.core.update.UpdateChecker;
 import com.bitworksmc.headdb.core.util.Compatibility;
 import com.bitworksmc.headdb.core.util.HDBLocalization;
 import com.bitworksmc.headdb.core.util.Utils;
@@ -49,6 +50,7 @@ public class HeadDB extends JavaPlugin {
     private PlayerStorage playerStorage;
     private HDBLocalization localization;
     private EconomyProvider economyProvider;
+    private UpdateChecker updateChecker;
 
     @SuppressWarnings("removal")
     @Override
@@ -117,6 +119,16 @@ public class HeadDB extends JavaPlugin {
             new PaperInputListener().register(this);
         }
 
+        if (config.isUpdateCheckerEnabled()) {
+            this.updateChecker = new UpdateChecker(
+                    this,
+                    config.getUpdateCheckerIntervalHours(),
+                    config.isUpdateCheckerNotifyConsole(),
+                    config.isUpdateCheckerNotifyPlayers()
+            );
+            this.updateChecker.start();
+        }
+
         // Start updater task
         if (config.isUpdaterEnabled()) {
             Compatibility.runAsyncRepeating(this, () ->
@@ -152,6 +164,9 @@ public class HeadDB extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (this.updateChecker != null) {
+            this.updateChecker.close();
+        }
         // Closing a view fires InventoryCloseEvent, which removes that view from the
         // registry. Iterate a snapshot so the listener cannot mutate our iterator.
         for (InventoryView view : new ArrayList<>(PageRegistry.INSTANCE.getPages().keySet())) {

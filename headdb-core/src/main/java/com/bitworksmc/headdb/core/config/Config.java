@@ -39,6 +39,8 @@ public class Config {
     private long playerStorageSaveInterval;
     private int databaseThreads, apiThreads;
     private boolean preloadHeads, trackPage, updaterEnabled;
+    private boolean updateCheckerEnabled, updateCheckerNotifyConsole, updateCheckerNotifyPlayers;
+    private long updateCheckerIntervalHours;
     private int maxBuyAmount;
     private List<Integer> omit;
     private List<String> databaseSourceUrls = List.of(DEFAULT_DATABASE_SOURCE_URL);
@@ -80,6 +82,10 @@ public class Config {
     private void loadGeneral() {
         playerStorageSaveInterval = positiveLong("storage.player.saveInterval", 1800L);
         updaterEnabled = config.getBoolean("updater", true);
+        updateCheckerEnabled = config.getBoolean("updateChecker.enabled", true);
+        updateCheckerNotifyConsole = config.getBoolean("updateChecker.notifyConsole", true);
+        updateCheckerNotifyPlayers = config.getBoolean("updateChecker.notifyPlayers", true);
+        updateCheckerIntervalHours = positiveLong("updateChecker.intervalHours", 24L);
         trackPage = config.getBoolean("trackPage", true);
         preloadHeads = config.getBoolean("preloadHeads", false);
         databaseThreads = positiveInt("database.threads", 1);
@@ -91,6 +97,10 @@ public class Config {
         LOGGER.trace("Loaded General Config:");
         LOGGER.trace(" - playerStorageSaveInterval = {}", playerStorageSaveInterval);
         LOGGER.trace(" - updaterEnabled = {}", updaterEnabled);
+        LOGGER.trace(" - updateCheckerEnabled = {}", updateCheckerEnabled);
+        LOGGER.trace(" - updateCheckerIntervalHours = {}", updateCheckerIntervalHours);
+        LOGGER.trace(" - updateCheckerNotifyConsole = {}", updateCheckerNotifyConsole);
+        LOGGER.trace(" - updateCheckerNotifyPlayers = {}", updateCheckerNotifyPlayers);
         LOGGER.trace(" - trackPage = {}", trackPage);
         LOGGER.trace(" - preloadHeads = {}", preloadHeads);
         LOGGER.trace(" - databaseThreads = {}", databaseThreads);
@@ -431,6 +441,10 @@ public class Config {
     public Component getHeadName() { return headName; }
 
     public boolean isUpdaterEnabled() { return updaterEnabled; }
+    public boolean isUpdateCheckerEnabled() { return updateCheckerEnabled; }
+    public long getUpdateCheckerIntervalHours() { return updateCheckerIntervalHours; }
+    public boolean isUpdateCheckerNotifyConsole() { return updateCheckerNotifyConsole; }
+    public boolean isUpdateCheckerNotifyPlayers() { return updateCheckerNotifyPlayers; }
     public int getDatabaseThreads() { return databaseThreads; }
     public int getApiThreads() { return apiThreads; }
     public List<String> getDatabaseSourceUrls() { return databaseSourceUrls; }
