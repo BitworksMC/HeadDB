@@ -106,7 +106,7 @@ HeadDB publishes its API module via our own Nexus Maven Repo.
 <repositories>
     <repository>
         <id>bitworks-repo</id>
-        <url>https://nexus.bitworksmc.com/repository/maven-releases/</url>
+        <url>https://nexus.tinydc.net/repository/maven-releases/</url>
     </repository>
 </repositories>
 
@@ -123,7 +123,7 @@ HeadDB publishes its API module via our own Nexus Maven Repo.
 ```gradle
 repositories {
     mavenCentral()
-    maven { url 'https://nexus.bitworksmc.com/repository/maven-releases/' }
+    maven { url 'https://nexus.tinydc.net/repository/maven-releases/' }
 }
 
 dependencies {
