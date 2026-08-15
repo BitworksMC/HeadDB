@@ -1,7 +1,8 @@
 # Custom Categories Configuration
 # These show up under the "More Categories'
 
-# ID of the category (unique)
+# ID of the category (unique). Use only letters, numbers, periods, underscores,
+# or hyphens; IDs are normalized to lowercase.
 # Can not be one of the default provided categories.
 # For example, you can not have ID set as ALPHABET.
 soccer:

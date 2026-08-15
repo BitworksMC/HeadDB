@@ -4,6 +4,7 @@ invalidSubCommand: "<red>Invalid sub-command » ${1}"
 commandUsage: "<red>Usage » <yellow>{usage}"
 invalidTarget: "<red>Could not find player » <yellow>{target}"
 invalidNumber: "<red>Invalid number » <yellow>{number}"
+databaseLoading: "<yellow>The head database is still loading. Please try again shortly."
 
 favoritesNone: "<red>You have no favorite heads!"
 localNone: "<red>There are no local heads!"
@@ -11,6 +12,8 @@ customCategoriesNone: "<red>There are no more categories!"
 
 purchase:
   invalidFunds: "<red>You do not have enough money for this!"
+  failed: "<red>The purchase failed. Check the server console for details."
+  customUnsupported: "<yellow>Custom chat input requires Paper; use one of the preset amounts on Spigot."
   success: "<gray>You bought <green>{amount}<gray>x <green>{name} <gray>for <green>{cost}"
   noEconomy: "<gray>Gave you <green>{amount}<gray>x <green>{name}"
 
@@ -70,6 +73,11 @@ menu:
       name: "<gold>Next ▶"
       lore: "<gray>Go to the next page: <green>${{NEXT}}"
 
+update:
+  available: |-
+    <yellow>A new HeadDB version is available: <green>{latest}<gray> (current: {current})
+    <gray>Download: {url}
+
 command:
 
   open:
@@ -78,11 +86,17 @@ command:
 
   give:
     invalidId: "<red>Invalid head id » <yellow>{id}"
+    invalidAmount: "<red>Amount must be between <yellow>1<red> and <yellow>{max}"
+    failed: "<red>Could not give that head. Check the server console for details."
     success: "<gray>Gave <green>{amount}<gray>x <green>{name} <gray>to <green>{target}"
 
   search:
     input: "<gray>Enter search query and filters:"
+    manual: "<yellow>Chat input requires Paper. Run <white>/hdb search \\<query\\><yellow> instead."
     start: "<gray> ⏳ Searching..."
+    empty: "<red>Enter a name or at least one search filter."
+    invalidId: "<red>Invalid head ID: <yellow>{id}"
+    failed: "<red>The search failed. Check the server console for details."
     none: "<red>No heads found!"
     found: "<gray>Found <green>{amount} <gray>heads!"
     filter: |
@@ -95,3 +109,7 @@ command:
       <gray>• <white>IDs</white> » <gold>{ids}
       <gray>• <white>Mode</white> » <gold>{mode}
       
+
+  sounds:
+    enabled: "<green>HeadDB interface sounds enabled."
+    disabled: "<yellow>HeadDB interface sounds disabled. Run the command again to re-enable them."

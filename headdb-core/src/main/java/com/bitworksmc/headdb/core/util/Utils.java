@@ -1,8 +1,10 @@
 package com.bitworksmc.headdb.core.util;
 
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -11,8 +13,8 @@ import java.util.regex.Pattern;
 
 public class Utils {
 
-    private static final Pattern SPACE_PATTERN = Pattern.compile(" ");
     private static final AtomicInteger poolNumber = new AtomicInteger(1);
+    private static final Pattern INVALID_NAMESPACED_KEY_CHARACTERS = Pattern.compile("[^a-z0-9._/-]");
 
     /**
      * Splits the given list into sublists of the given chunkSize.
@@ -23,6 +25,9 @@ public class Utils {
      * @return a list of sublists, each at most chunkSize elements long
      */
     public static <T> List<List<T>> chunk(List<T> list, int chunkSize) {
+        if (chunkSize <= 0) {
+            throw new IllegalArgumentException("chunkSize must be positive");
+        }
         List<List<T>> chunks = new ArrayList<>();
         int size = list.size();
         for (int i = 0; i < size; i += chunkSize) {
@@ -37,15 +42,15 @@ public class Utils {
         if (text == null || query == null) {
             return false;
         }
-        if (text.equalsIgnoreCase(query)) {
-            return true;
-        }
-        for (String part : SPACE_PATTERN.split(text)) {
-            if (part.equalsIgnoreCase(query)) {
-                return true;
-            }
-        }
-        return false;
+        String normalizedQuery = query.trim();
+        return !normalizedQuery.isEmpty()
+                && text.toLowerCase(Locale.ROOT).contains(normalizedQuery.toLowerCase(Locale.ROOT));
+    }
+
+    public static String normalizeNamespacedKey(String key) {
+        return INVALID_NAMESPACED_KEY_CHARACTERS
+                .matcher(key.toLowerCase(Locale.ROOT))
+                .replaceAll("_");
     }
 
 

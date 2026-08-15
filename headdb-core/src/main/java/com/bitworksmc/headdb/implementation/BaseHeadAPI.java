@@ -89,23 +89,25 @@ public class BaseHeadAPI implements HeadAPI {
     @NotNull
     @Override
     public CompletableFuture<List<Head>> getHeads() {
-        return CompletableFuture.supplyAsync(() -> database.getHeads() != null ? database.getHeads() : Collections.emptyList(), executor);
+        return CompletableFuture.supplyAsync(() -> {
+            List<Head> heads = database.getHeads();
+            return heads != null ? heads : Collections.emptyList();
+        }, executor);
     }
 
     @NotNull
     @Override
     public List<String> findKnownCategories() {
-        if (database.getHeads() == null) {
+        List<Head> heads = database.getHeads();
+        if (heads == null) {
             return Collections.emptyList();
         }
 
-        List<String> result = new ArrayList<>();
-        for (Head head : database.getHeads()) {
-            if (!result.contains(head.getCategory())) {
-                result.add(head.getCategory());
-            }
+        Set<String> result = new LinkedHashSet<>();
+        for (Head head : heads) {
+            result.add(head.getCategory());
         }
-        return result;
+        return List.copyOf(result);
     }
 
     @NotNull
@@ -114,14 +116,18 @@ public class BaseHeadAPI implements HeadAPI {
         OfflinePlayer[] players = Bukkit.getOfflinePlayers();
         List<ItemStack> heads = new ArrayList<>();
         for (OfflinePlayer player : players) {
-            heads.add(ItemFactoryRegistry.get().asItem(player));
+            ItemStack item = ItemFactoryRegistry.get().asItem(player);
+            if (item != null) {
+                heads.add(item);
+            }
         }
-        return heads;
+        return List.copyOf(heads);
     }
 
     @NotNull
     @Override
     public Optional<ItemStack> computeLocalHead(UUID uniqueId) {
+        Objects.requireNonNull(uniqueId, "uniqueId");
         return Optional.ofNullable(ItemFactoryRegistry.get().asItem(Bukkit.getOfflinePlayer(uniqueId)));
     }
 

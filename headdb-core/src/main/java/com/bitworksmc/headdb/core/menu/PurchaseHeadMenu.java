@@ -8,25 +8,35 @@ import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.factory.ItemFactoryRegistry;
 import com.bitworksmc.headdb.core.util.Compatibility;
+import com.bitworksmc.headdb.core.util.PermissionUtil;
 import com.github.thesilentpro.inputs.paper.PaperInput;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Locale;
 import java.util.function.Consumer;
 
 public class PurchaseHeadMenu extends SimplePage {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PurchaseHeadMenu.class);
     private final HeadDB plugin;
     private final Head head;
+    private final String permissionCategory;
 
     public PurchaseHeadMenu(HeadDB plugin, Player player, Head head, Page parentPage) {
+        this(plugin, player, head, parentPage, head.getCategory());
+    }
+
+    public PurchaseHeadMenu(HeadDB plugin, Player player, Head head, Page parentPage, String permissionCategory) {
         super(plugin.getLocalization().getMessage(player.getUniqueId(), "menu.purchase.name").orElseGet(() -> Component.text("HeadDB » " + head.getName() + " » Purchase")).replaceText(builder -> builder.matchLiteral("{name}").replacement(head.getName())), 6);
         this.plugin = plugin;
         this.head = head;
+        this.permissionCategory = permissionCategory;
         preventInteraction();
 
         ItemStack item = head.getItem();
@@ -38,21 +48,27 @@ public class PurchaseHeadMenu extends SimplePage {
         Compatibility.setItemDetails(one, Component.text("Buy 1x").color(NamedTextColor.GOLD), Component.text("Cost: ").color(NamedTextColor.GRAY).append(Component.text(price).color(NamedTextColor.RED)));
         setButton(28, new SimpleButton(one, handlePurchase(price, 1))); // x1
 
-        ItemStack half = item.clone();
-        half.setAmount(32);
-        Compatibility.setItemDetails(half, Component.text("Buy 32x").color(NamedTextColor.GOLD), Component.text("Cost: ").color(NamedTextColor.GRAY).append(Component.text(price * 32).color(NamedTextColor.RED)));
-        setButton(30, new SimpleButton(half, handlePurchase(price, 32))); // x32
+        if (plugin.getCfg().getMaxBuyAmount() >= 32) {
+            ItemStack half = item.clone();
+            half.setAmount(32);
+            Compatibility.setItemDetails(half, Component.text("Buy 32x").color(NamedTextColor.GOLD), Component.text("Cost: ").color(NamedTextColor.GRAY).append(Component.text(price * 32).color(NamedTextColor.RED)));
+            setButton(30, new SimpleButton(half, handlePurchase(price, 32))); // x32
+        }
 
-        ItemStack stack = item.clone();
-        stack.setAmount(64);
-        Compatibility.setItemDetails(stack, Component.text("Buy 64x").color(NamedTextColor.GOLD), Component.text("Cost: ").color(NamedTextColor.GRAY).append(Component.text(price * 64).color(NamedTextColor.RED)));
-        setButton(32, new SimpleButton(stack, handlePurchase(price, 64))); // x64
+        if (plugin.getCfg().getMaxBuyAmount() >= 64) {
+            ItemStack stack = item.clone();
+            stack.setAmount(64);
+            Compatibility.setItemDetails(stack, Component.text("Buy 64x").color(NamedTextColor.GOLD), Component.text("Cost: ").color(NamedTextColor.GRAY).append(Component.text(price * 64).color(NamedTextColor.RED)));
+            setButton(32, new SimpleButton(stack, handlePurchase(price, 64))); // x64
+        }
 
         ItemStack custom = item.clone();
         Compatibility.setItemDetails(custom, Component.text("Buy custom amount").color(NamedTextColor.GOLD), Component.text("Click and type in chat the amount you wish to buy.").color(NamedTextColor.GREEN));
         setButton(34, new SimpleButton(custom, ctx -> {
             if (!Compatibility.IS_PAPER) {
-                return; // Currently unsupported, requires inputs to be updated for spigot support
+                plugin.getLocalization().sendMessage(ctx.event().getWhoClicked(), "purchase.customUnsupported");
+                Compatibility.playSound((Player) ctx.event().getWhoClicked(), plugin.getSoundConfig().get("menu.none"));
+                return;
             }
 
             Player entity = (Player) ctx.event().getWhoClicked();
@@ -68,10 +84,16 @@ public class PurchaseHeadMenu extends SimplePage {
                     })
                     .then((input, event) -> {
                         event.setCancelled(true);
-                        if (input > plugin.getCfg().getMaxBuyAmount()) {
-                            input = plugin.getCfg().getMaxBuyAmount();
+                        int requestedAmount = input;
+                        if (requestedAmount < 1) {
+                            Compatibility.getEntityExecutor(plugin, entity).execute(() -> {
+                                plugin.getLocalization().sendMessage(entity, "invalidNumber", msg -> msg.replaceText(builder -> builder.matchLiteral("{number}").replacement(String.valueOf(requestedAmount))));
+                                Compatibility.playSound(entity, plugin.getSoundConfig().get("purchase.failed"));
+                            });
+                            return;
                         }
-                        handlePurchase(price, input).accept(ctx);
+                        int amount = Math.min(requestedAmount, plugin.getCfg().getMaxBuyAmount());
+                        Compatibility.getEntityExecutor(plugin, entity).execute(() -> handlePurchase(price, amount).accept(ctx));
                     }).register(entity.getUniqueId());
         }));
 
@@ -85,6 +107,11 @@ public class PurchaseHeadMenu extends SimplePage {
         return ctx -> {
             double price = cost * amount;
             Player player = (Player) ctx.event().getWhoClicked();
+            if (!PermissionUtil.hasCategoryPermission(player, permissionCategory)) {
+                plugin.getLocalization().sendMessage(player, "noPermission");
+                Compatibility.playSound(player, plugin.getSoundConfig().get("noPermission"));
+                return;
+            }
             plugin.getEconomyProvider().purchase(player, price).thenAcceptAsync(success -> {
                 if (!success) {
                     plugin.getLocalization().sendMessage(player, "purchase.invalidFunds");
@@ -101,7 +128,14 @@ public class PurchaseHeadMenu extends SimplePage {
                                 .replaceText(builder -> builder.matchLiteral("{cost}").replacement(String.valueOf(price)))
                 );
                 Compatibility.playSound(player, plugin.getSoundConfig().get("purchase.completed"));
-            }, Compatibility.getEntityExecutor(plugin, player));
+            }, Compatibility.getEntityExecutor(plugin, player)).exceptionally(ex -> {
+                LOGGER.error("Failed to purchase head {} for {}", head.getId(), player.getUniqueId(), ex);
+                Compatibility.getEntityExecutor(plugin, player).execute(() -> {
+                    plugin.getLocalization().sendMessage(player, "purchase.failed");
+                    Compatibility.playSound(player, plugin.getSoundConfig().get("purchase.failed"));
+                });
+                return null;
+            });
         };
     }
 

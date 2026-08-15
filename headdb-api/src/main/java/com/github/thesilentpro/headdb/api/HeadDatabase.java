@@ -20,7 +20,7 @@ public interface HeadDatabase {
     boolean awaitReady();
 
     /**
-     * Non‑blocking check: has the most recent update() finished (successfully or not)?
+     * Non-blocking check for whether a successful, usable snapshot is available.
      */
     boolean isReady();
 

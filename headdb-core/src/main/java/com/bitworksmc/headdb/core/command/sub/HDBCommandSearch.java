@@ -5,21 +5,24 @@ import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.command.HDBSubCommand;
 import com.bitworksmc.headdb.core.menu.gui.HeadsGUI;
 import com.bitworksmc.headdb.core.util.Compatibility;
+import com.bitworksmc.headdb.core.util.PermissionUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class HDBCommandSearch extends HDBSubCommand {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(HDBCommandSearch.class);
     private final HeadDB plugin;
     private final List<String> completions = List.of("tags:", "category:", "ids:", "--any");
 
     public HDBCommandSearch(HeadDB plugin) {
-        super("search", "Search for specific heads.", "[tags:|category:|ids:] [head]", "Search the database with possible filters.", "s", "find");
+        super("search", "Search for specific heads.", "[tags:|category:|ids:] [head]", "s", "find");
         this.plugin = plugin;
     }
 
@@ -31,7 +34,7 @@ public class HDBCommandSearch extends HDBSubCommand {
         }
 
         this.plugin.getLocalization().sendMessage(sender, "command.search.start");
-        CompletableFuture.supplyAsync(() -> {
+        plugin.getHeadApi().onReady().thenApplyAsync(allHeads -> {
             // detect & strip --any
             // Enables loose search (match if any filter passes instead of all).
             boolean any = Arrays.stream(args).anyMatch(a -> a.equalsIgnoreCase("--any"));
@@ -49,7 +52,12 @@ public class HDBCommandSearch extends HDBSubCommand {
                     category = token.substring("category:".length());
                 } else if (lower.startsWith("tags:")) {
                     String raw = token.substring("tags:".length());
-                    if (!raw.isEmpty()) tags.addAll(Arrays.asList(raw.split(",")));
+                    if (!raw.isEmpty()) {
+                        Arrays.stream(raw.split(","))
+                                .map(String::trim)
+                                .filter(tag -> !tag.isEmpty())
+                                .forEach(tags::add);
+                    }
                 } else if (lower.startsWith("ids:")) {
                     String raw = token.substring("ids:".length());
                     if (!raw.isEmpty()) {
@@ -59,8 +67,10 @@ public class HDBCommandSearch extends HDBSubCommand {
                                 try {
                                     ids.add(Integer.parseInt(trimmed));
                                 } catch (NumberFormatException e) {
-                                    Compatibility.getSenderExecutor(plugin, sender).execute(() -> sender.sendMessage("§cInvalid ID: §f" + trimmed));
-                                    return null;
+                                    Compatibility.getSenderExecutor(plugin, sender).execute(() ->
+                                            plugin.getLocalization().sendMessage(sender, "command.search.invalidId", msg ->
+                                                    msg.replaceText(builder -> builder.matchLiteral("{id}").replacement(trimmed))));
+                                    return SearchResult.invalid();
                                 }
                             }
                         }
@@ -70,6 +80,15 @@ public class HDBCommandSearch extends HDBSubCommand {
                 }
             }
             String nameQuery = String.join(" ", nameParts);
+
+            if ((category == null || category.isBlank())
+                    && tags.isEmpty()
+                    && ids.isEmpty()
+                    && nameQuery.isBlank()) {
+                Compatibility.getSenderExecutor(plugin, sender).execute(() ->
+                        plugin.getLocalization().sendMessage(sender, "command.search.empty"));
+                return SearchResult.invalid();
+            }
 
             // Echo filters to player
             String finalCategory = category;
@@ -89,7 +108,6 @@ public class HDBCommandSearch extends HDBSubCommand {
             Set<String> tagSet = tags.stream().map(t -> t.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
             Set<Integer> idSet = new HashSet<>(ids);
 
-            List<Head> allHeads = plugin.getHeadApi().getHeads().join();
             List<Head> result   = new ArrayList<>();
 
             if (any) {
@@ -152,9 +170,15 @@ public class HDBCommandSearch extends HDBSubCommand {
                 }
             }
 
-            return new SearchResult(result, qName);
+            return new SearchResult(result, qName, true);
         }).thenAcceptAsync(searchResult -> {
-            List<Head> heads = searchResult.heads;
+            if (!searchResult.valid) {
+                Compatibility.playSound(player, plugin.getSoundConfig().get("failure"));
+                return;
+            }
+            List<Head> heads = searchResult.heads.stream()
+                    .filter(head -> PermissionUtil.hasCategoryPermission(player, head.getCategory()))
+                    .toList();
             if (heads == null || heads.isEmpty()) {
                 this.plugin.getLocalization().sendMessage(player, "command.search.none");
                 return;
@@ -173,7 +197,14 @@ public class HDBCommandSearch extends HDBSubCommand {
             gui.getGuiRegistry().setCurrentPage(player.getUniqueId(), gui.getKey(), 0);
             gui.open(player);
             Compatibility.playSound(player, plugin.getSoundConfig().get("menu.open"));
-        }, Compatibility.getEntityExecutor(plugin, player));
+        }, Compatibility.getEntityExecutor(plugin, player)).exceptionally(ex -> {
+            LOGGER.error("Failed to search the head database for {}", player.getUniqueId(), ex);
+            Compatibility.getEntityExecutor(plugin, player).execute(() -> {
+                plugin.getLocalization().sendMessage(player, "command.search.failed");
+                Compatibility.playSound(player, plugin.getSoundConfig().get("failure"));
+            });
+            return null;
+        });
     }
 
     @Override
@@ -181,6 +212,10 @@ public class HDBCommandSearch extends HDBSubCommand {
         return completions;
     }
 
-    private record SearchResult(List<Head> heads, String name) {}
+    private record SearchResult(List<Head> heads, String name, boolean valid) {
+        private static SearchResult invalid() {
+            return new SearchResult(List.of(), "", false);
+        }
+    }
 
 }

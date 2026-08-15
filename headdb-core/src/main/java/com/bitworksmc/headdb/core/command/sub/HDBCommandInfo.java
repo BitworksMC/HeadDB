@@ -26,8 +26,8 @@ public class HDBCommandInfo extends HDBSubCommand {
         String javaVendor = System.getProperty("java.vendor");
         String javaVersion = System.getProperty("java.version");
         String bukkitName = Bukkit.getName();
-        String bukkitVersion = Bukkit.getBukkitVersion().substring(0, Bukkit.getBukkitVersion().indexOf("-"));
-        String serverVersion = Bukkit.getVersion().substring(0, Bukkit.getVersion().indexOf("(") - 1);
+        String bukkitVersion = before(Bukkit.getBukkitVersion(), "-");
+        String serverVersion = before(Bukkit.getVersion(), "(");
         int protocolVersion = -1;
         String clientBrand = "Unknown";
 
@@ -66,6 +66,11 @@ public class HDBCommandInfo extends HDBSubCommand {
         }
 
         Compatibility.sendMessage(sender, message);
+    }
+
+    private static String before(String value, String delimiter) {
+        int delimiterIndex = value.indexOf(delimiter);
+        return (delimiterIndex < 0 ? value : value.substring(0, delimiterIndex)).trim();
     }
 
 }

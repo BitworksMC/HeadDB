@@ -5,6 +5,7 @@ import com.bitworksmc.headdb.core.factory.ItemFactoryRegistry;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.List;
+import java.util.Objects;
 
 public class BaseHead implements Head {
 
@@ -17,10 +18,10 @@ public class BaseHead implements Head {
 
     public BaseHead(int id, String name, String texture, String category, List<String> tags) {
         this.id = id;
-        this.name = name;
-        this.texture = texture;
-        this.category = category;
-        this.tags = tags;
+        this.name = Objects.requireNonNull(name, "name");
+        this.texture = Objects.requireNonNull(texture, "texture");
+        this.category = Objects.requireNonNull(category, "category");
+        this.tags = List.copyOf(Objects.requireNonNull(tags, "tags"));
     }
 
     @Override

@@ -20,4 +20,8 @@ public class SqlUtils {
     public static final String SELECT_ALL = """
         SELECT * FROM players;
     """;
+
+    public static final String SELECT_LEGACY_PLAYERS = """
+        SELECT uuid, lang, soundEnabled, favorites FROM hdb_players;
+    """;
 }

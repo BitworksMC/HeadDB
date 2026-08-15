@@ -40,9 +40,9 @@ public class LegacyItemFactory implements ItemFactory {
 
         try {
             PlayerTextures textures = profile.getTextures();
-            textures.setSkin(URI.create("http://textures.minecraft.net/texture/" + head.getTexture()).toURL());
+            textures.setSkin(URI.create("https://textures.minecraft.net/texture/" + head.getTexture()).toURL());
             profile.setTextures(textures);
-        } catch (MalformedURLException ex) {
+        } catch (IllegalArgumentException | MalformedURLException ex) {
             LOGGER.error("Failed to set texture for {} (ID:{} | Texture: {})", head.getName(), head.getId(), head.getTexture(), ex);
             return item;
         }
@@ -99,6 +99,17 @@ public class LegacyItemFactory implements ItemFactory {
             itemName = meta.getDisplayName();
         }
         return itemName != null ? LegacyComponentSerializer.legacySection().deserialize(itemName) : Component.empty();
+    }
+
+    @Override
+    public List<Component> getLoreFromItem(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        List<String> lore = meta.getLore();
+        return lore == null
+                ? null
+                : lore.stream()
+                        .<Component>map(LegacyComponentSerializer.legacySection()::deserialize)
+                        .toList();
     }
 
     @Override

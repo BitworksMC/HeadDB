@@ -1,8 +1,6 @@
 package com.bitworksmc.headdb.core.menu.gui;
 
 import com.github.thesilentpro.grim.button.SimpleButton;
-import com.github.thesilentpro.grim.gui.PaginatedGUI;
-import com.github.thesilentpro.grim.page.Page;
 import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.menu.HeadsMenu;
@@ -17,18 +15,67 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
-public class HeadsGUI extends PaginatedGUI {
+public class HeadsGUI extends SafePaginatedGUI {
     private static final String DISCORD_URL = "https://discord.gg/j8BAsz8Ac7";
 
     public HeadsGUI(HeadDB plugin, String key, Component title, List<Head> heads) {
-        super(new NamespacedKey(plugin, "gui_" + key));
+        this(plugin, key, title, heads, null);
+    }
+
+    public HeadsGUI(HeadDB plugin, String key, Component title, List<Head> heads, @Nullable String permissionCategory) {
+        super(new NamespacedKey(plugin, Utils.normalizeNamespacedKey("gui_" + key)));
 
         // Chunk heads list
-        for (List<Head> headsChunk : Utils.chunk(heads, plugin.getCfg().getHeadsMenuRows() * 9)) {
-            HeadsMenu headsMenu = new HeadsMenu(plugin, this, title, headsChunk);
+        List<List<Head>> chunks = Utils.chunk(heads, plugin.getCfg().getHeadsMenuRows() * 9);
+        if (chunks.isEmpty()) {
+            chunks = List.of(List.of());
+        }
+
+        // This icon is identical on every page. Resolve its database texture
+        // once per GUI instead of scheduling and joining one API lookup per page.
+        ItemStack infoItem = null;
+        if (plugin.getCfg().isShowInfoItem()) {
+            Component[] infoLore = new Component[]{
+                    Component.text("❓ Didn't spot the perfect head in our collection?")
+                            .decoration(TextDecoration.ITALIC, false)
+                            .color(NamedTextColor.YELLOW),
+                    Component.text("🎯 We're always adding more — and you can help!")
+                            .decoration(TextDecoration.ITALIC, false)
+                            .color(NamedTextColor.YELLOW),
+                    Component.text(""),
+                    Component.text("📥 Submit your favorite or original heads")
+                            .decoration(TextDecoration.ITALIC, false)
+                            .color(NamedTextColor.YELLOW),
+                    Component.text("✨ Directly through our community Discord!")
+                            .decoration(TextDecoration.ITALIC, false)
+                            .color(NamedTextColor.YELLOW),
+                    Component.text(""),
+                    Component.text("🔗 Discord > " + DISCORD_URL)
+                            .decoration(TextDecoration.ITALIC, false)
+                            .color(NamedTextColor.YELLOW)
+            };
+
+            infoItem = plugin.getHeadApi()
+                    .findByTexture("16439d2e306b225516aa9a6d007a7e75edd2d5015d113b42f44be62a517e574f")
+                    .join()
+                    .map(head -> Compatibility.setItemDetails(
+                            head.getItem(),
+                            Component.text("Can't find the head you're looking for?").color(NamedTextColor.RED),
+                            infoLore
+                    ))
+                    .orElseGet(() -> Compatibility.newItem(
+                            Material.WRITABLE_BOOK,
+                            Component.text("Can't find the head you're looking for?").color(NamedTextColor.RED),
+                            infoLore
+                    ));
+        }
+
+        for (List<Head> headsChunk : chunks) {
+            HeadsMenu headsMenu = new HeadsMenu(plugin, this, title, headsChunk, permissionCategory);
 
             if (plugin.getCfg().isHeadsMenuDividerEnabled()) {
                 ItemStack dividerItem = Compatibility.newItem(
@@ -41,42 +88,7 @@ public class HeadsGUI extends PaginatedGUI {
                 }
             }
 
-            // Info item
-            if (plugin.getCfg().isShowInfoItem()) {
-                Component[] infoLore = new Component[]{
-                        Component.text("❓ Didn't spot the perfect head in our collection?")
-                                .decoration(TextDecoration.ITALIC, false)
-                                .color(NamedTextColor.YELLOW),
-                        Component.text("🎯 We're always adding more — and you can help!")
-                                .decoration(TextDecoration.ITALIC, false)
-                                .color(NamedTextColor.YELLOW),
-                        Component.text(""),
-                        Component.text("📥 Submit your favorite or original heads")
-                                .decoration(TextDecoration.ITALIC, false)
-                                .color(NamedTextColor.YELLOW),
-                        Component.text("✨ Directly through our community Discord!")
-                                .decoration(TextDecoration.ITALIC, false)
-                                .color(NamedTextColor.YELLOW),
-                        Component.text(""),
-                        Component.text("🔗 Discord > " + DISCORD_URL)
-                                .decoration(TextDecoration.ITALIC, false)
-                                .color(NamedTextColor.YELLOW)
-                };
-
-                ItemStack infoItem = plugin.getHeadApi()
-                        .findByTexture("16439d2e306b225516aa9a6d007a7e75edd2d5015d113b42f44be62a517e574f")
-                        .join()
-                        .map(head -> Compatibility.setItemDetails(
-                                head.getItem(),
-                                Component.text("Can't find the head you're looking for?").color(NamedTextColor.RED),
-                                infoLore
-                        ))
-                        .orElseGet(() -> Compatibility.newItem(
-                                Material.WRITABLE_BOOK,
-                                Component.text("Can't find the head you're looking for?").color(NamedTextColor.RED),
-                                infoLore
-                        ));
-
+            if (infoItem != null) {
                 headsMenu.setButton(53, new SimpleButton(infoItem, ctx -> {
                     Compatibility.sendMessage(
                             ctx.event().getWhoClicked(),
@@ -183,9 +195,6 @@ public class HeadsGUI extends PaginatedGUI {
                 }
             });
         }
-
-        // Rerender all pages so the new control items show up
-        getPages().values().forEach(Page::reRender);
     }
 
 }

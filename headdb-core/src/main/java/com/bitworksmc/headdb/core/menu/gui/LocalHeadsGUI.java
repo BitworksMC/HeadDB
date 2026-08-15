@@ -1,11 +1,11 @@
 package com.bitworksmc.headdb.core.menu.gui;
 
 import com.github.thesilentpro.grim.button.SimpleButton;
-import com.github.thesilentpro.grim.gui.PaginatedGUI;
 import com.github.thesilentpro.grim.page.Page;
 import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.menu.LocalHeadsMenu;
 import com.bitworksmc.headdb.core.util.Compatibility;
+import com.bitworksmc.headdb.core.util.Utils;
 import com.bitworksmc.headdb.core.util.Utils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -19,11 +19,11 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.List;
 
-public class LocalHeadsGUI extends PaginatedGUI {
+public class LocalHeadsGUI extends SafePaginatedGUI {
     private static final String DISCORD_URL = "https://discord.gg/j8BAsz8Ac7";
 
     public LocalHeadsGUI(HeadDB plugin, String key, Component title, List<ItemStack> items) {
-        super(new NamespacedKey(plugin, "gui_" + key));
+        super(new NamespacedKey(plugin, Utils.normalizeNamespacedKey("gui_" + key)));
 
         // Chunk items list
         for (List<ItemStack> itemsChunk : Utils.chunk(items, plugin.getCfg().getHeadsMenuRows() * 9)) {

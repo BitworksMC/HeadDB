@@ -5,17 +5,19 @@
 ---
 
 ## 📦 Table of Contents
-1. [Features](#features)  
-2. [Download & Installation](#download--installation)  
-3. [Reporting Issues](#reporting-issues)  
-4. [Using the API](#using-the-api)  
-   - [Adding the Dependency](#adding-the-dependency)  
-   - [Obtaining the API](#obtaining-the-api)  
-   - [Waiting for Database Ready](#waiting-for-database-ready)  
-   - [Examples](#examples)  
-5. [API Reference](#api-reference)  
-6. [Contributing](#contributing)  
-7. [License](#license)
+1. [Features](#features)
+2. [Download & Installation](#download--installation)
+3. [Permissions](#permissions)
+4. [Reporting Issues](#reporting-issues)
+5. [Using the API](#using-the-api)
+   - [Adding the Dependency](#adding-the-dependency)
+   - [Obtaining the API](#obtaining-the-api)
+   - [Waiting for Database Ready](#waiting-for-database-ready)
+   - [Examples](#examples)
+6. [API Reference](#api-reference)
+7. [Local Paper Test Server](#local-paper-test-server)
+8. [Contributing](#contributing)
+9. [License](#license)
 
 ---
 
@@ -27,11 +29,22 @@
 - **Async Loading**  
   The database loads on a background thread.  
 - **Flexible Querying**  
-  Search by name, ID,category, or tags.  
+  Search by name, ID, category, or tags.
 
 ---
 
 ## 🚀 Download & Installation
+
+HeadDB 6.0.2 targets Minecraft/Paper 26.2 and requires Java 25. Use the regular
+`HeadDB-6.0.2.jar` on Paper. The separately named `-Spigot.jar` artifact bundles
+the compatibility libraries needed by Spigot; Paper remains the recommended
+server platform. Folia is not currently supported because the bundled menu
+framework is not region-thread safe.
+
+HeadDB checks GitHub Releases for updates on startup and every 24 hours by
+default. Console notifications and player notifications can be configured under
+`updateChecker` in `config.yml`; players require `headdb.update.notify`. The
+download link is clickable on Paper and displayed as a plain URL on Spigot.
 
 Choose your preferred source:
 
@@ -43,6 +56,34 @@ Choose your preferred source:
   https://hangar.papermc.io/GoodrichDev/HeadDatabase
 - **Spigot** *(Not recommended)*  
   https://www.spigotmc.org/resources/headdb.133362/
+
+---
+
+## 🔐 Permissions
+
+| Permission | Purpose |
+|---|---|
+| `headdb.command.open` | Open HeadDB and its category menus. |
+| `headdb.command.search` | Search the database. |
+| `headdb.command.give` | Give a database head by command. |
+| `headdb.command.info` | View HeadDB and server version information. |
+| `headdb.command.sounds` | Toggle personal HeadDB interface sounds with `/hdb sounds`. |
+| `headdb.update.notify` | Receive a notification with the latest-release download link. |
+| `headdb.category.*` | Access every category. |
+| `headdb.category.<category_id>` | Access one database or custom category. |
+| `headdb.category.local` | Access heads generated from players known to this server. |
+| `headdb.category.custom` | Open the custom-categories menu. |
+| `headdb.category.favorites` | Open favorites (`headdb.favorites` is a legacy alias). |
+| `headdb.admin` | Grant all HeadDB commands and categories. |
+
+To grant every category except local heads, grant `headdb.category.*` and explicitly deny `headdb.category.local`. Category-specific values take precedence over the wildcard, so a LuckPerms setup can use:
+
+```text
+/lp group <group> permission set headdb.category.* true
+/lp group <group> permission set headdb.category.local false
+```
+
+Database category IDs are their lowercase names with spaces and symbols replaced by underscores. For example, `Food & Drinks` uses `headdb.category.food_drinks`. Custom categories use the identifier from `categories.yml` (normalized the same way).
 
 ---
 
@@ -164,7 +205,7 @@ Legacy compatibility: `com.github.thesilentpro.headdb.api.*` remains available a
 | Method                                    | Description                                                      |
 |-------------------------------------------|------------------------------------------------------------------|
 | `void awaitReady()`                       | Blocks until the database finishes initial load.                 |
-| `boolean isReady()`                       | Returns true if the database is fully loaded (success/failure).  |
+| `boolean isReady()`                       | Returns true once a successful database snapshot is available.  |
 | `CompletableFuture<List<Head>> onReady()` | Async callback once initial load completes.                      |
 | `searchByName(String name, boolean lenient)` | Fuzzy or exact name searches.                                 |
 | `findById(int id)`                        | Lookup by internal head ID.                                      |
@@ -172,10 +213,36 @@ Legacy compatibility: `com.github.thesilentpro.headdb.api.*` remains available a
 | `findByCategory(String category)`         | Get all heads in a given category.                               |
 | `findByTags(String... tags)`              | Get heads matching any of the supplied tags.                     |
 | `getHeads()`                              | Retrieve the full list of loaded heads (async).                  |
-| `computeLocalHeads()`                     | Generate `ItemStack`s for all currently online players.          |
+| `computeLocalHeads()`                     | Generate `ItemStack`s for all players known to the server.       |
 | `computeLocalHead(UUID uniqueId)`         | Generate an `ItemStack` for a specific player UUID.              |
 | `List<String> findKnownCategories()`      | List all category names.                                         |
 | `ExecutorService getExecutor()`           | Access the internal executor for advanced workflows.             |
+
+---
+
+## 🧪 Local Paper Test Server
+
+On Windows with Java 25 and Maven, run this command from the repository root:
+
+```powershell
+mvn -pl headdb-core -am -Pdev-server verify
+```
+
+For an IntelliJ Maven run configuration, use the repository root as the working
+directory and `-pl headdb-core -am -Pdev-server verify` as the command line.
+The profile builds and tests HeadDB, downloads the latest stable Paper build for
+Minecraft 26.2, verifies its checksum, installs the Paper plugin, and keeps the
+server attached to the IDE console. Connect to `localhost` in Minecraft, and
+enter `stop` in the console for a graceful shutdown.
+
+The server, world, and configuration persist in the ignored
+`build/dev-server` directory. The Paper download is reused until a newer stable
+build is available, while `plugins/HeadDB.jar` is replaced on every launch. For
+faster iterations after an already-tested change, add `-DskipTests`. Memory can
+be overridden with `-Ddev.server.xms=1G -Ddev.server.xmx=4G`.
+
+Running this profile writes `eula=true`. By using it, you are confirming that
+you agree to the [Minecraft EULA](https://aka.ms/MinecraftEULA).
 
 ---
 

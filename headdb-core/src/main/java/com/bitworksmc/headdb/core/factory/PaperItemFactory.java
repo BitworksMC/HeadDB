@@ -38,9 +38,9 @@ public class PaperItemFactory implements ItemFactory {
 
         try {
             PlayerTextures textures = profile.getTextures();
-            textures.setSkin(URI.create("http://textures.minecraft.net/texture/" + head.getTexture()).toURL());
+            textures.setSkin(URI.create("https://textures.minecraft.net/texture/" + head.getTexture()).toURL());
             profile.setTextures(textures);
-        } catch (MalformedURLException ex) {
+        } catch (IllegalArgumentException | MalformedURLException ex) {
             LOGGER.error("Failed to set texture for {} (ID:{} | Texture: {})", head.getName(), head.getId(), head.getTexture(), ex);
             return item;
         }
@@ -99,6 +99,13 @@ public class PaperItemFactory implements ItemFactory {
         }
         Component displayName = meta.displayName();
         return displayName != null ? displayName : Component.empty();
+    }
+
+    @Override
+    public List<Component> getLoreFromItem(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        List<Component> lore = meta.lore();
+        return lore == null ? null : List.copyOf(lore);
     }
 
     @Override
