@@ -15,8 +15,9 @@
    - [Waiting for Database Ready](#waiting-for-database-ready)
    - [Examples](#examples)
 6. [API Reference](#api-reference)
-7. [Contributing](#contributing)
-8. [License](#license)
+7. [Local Paper Test Server](#local-paper-test-server)
+8. [Contributing](#contributing)
+9. [License](#license)
 
 ---
 
@@ -216,6 +217,32 @@ Legacy compatibility: `com.github.thesilentpro.headdb.api.*` remains available a
 | `computeLocalHead(UUID uniqueId)`         | Generate an `ItemStack` for a specific player UUID.              |
 | `List<String> findKnownCategories()`      | List all category names.                                         |
 | `ExecutorService getExecutor()`           | Access the internal executor for advanced workflows.             |
+
+---
+
+## 🧪 Local Paper Test Server
+
+On Windows with Java 25 and Maven, run this command from the repository root:
+
+```powershell
+mvn -pl headdb-core -am -Pdev-server verify
+```
+
+For an IntelliJ Maven run configuration, use the repository root as the working
+directory and `-pl headdb-core -am -Pdev-server verify` as the command line.
+The profile builds and tests HeadDB, downloads the latest stable Paper build for
+Minecraft 26.2, verifies its checksum, installs the Paper plugin, and keeps the
+server attached to the IDE console. Connect to `localhost` in Minecraft, and
+enter `stop` in the console for a graceful shutdown.
+
+The server, world, and configuration persist in the ignored
+`build/dev-server` directory. The Paper download is reused until a newer stable
+build is available, while `plugins/HeadDB.jar` is replaced on every launch. For
+faster iterations after an already-tested change, add `-DskipTests`. Memory can
+be overridden with `-Ddev.server.xms=1G -Ddev.server.xmx=4G`.
+
+Running this profile writes `eula=true`. By using it, you are confirming that
+you agree to the [Minecraft EULA](https://aka.ms/MinecraftEULA).
 
 ---
 
