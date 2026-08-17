@@ -35,11 +35,31 @@
 
 ## 🚀 Download & Installation
 
-HeadDB 6.0.2 targets Minecraft/Paper 26.2 and requires Java 25. Use the regular
-`HeadDB-6.0.2.jar` on Paper. The separately named `-Spigot.jar` artifact bundles
-the compatibility libraries needed by Spigot; Paper remains the recommended
-server platform. Folia is not currently supported because the bundled menu
-framework is not region-thread safe.
+HeadDB 6.0.3 is distributed as two server-specific jars. Install exactly one:
+
+| File | Server versions | Java | Purpose |
+|---|---|---|---|
+| `HeadDB-6.0.3.jar` | Paper 1.21.0 and newer | Java 21+ | The full modern plugin and the recommended download. |
+| `HeadDB-6.0.3-legacy.jar` | Bukkit-compatible 1.8.8-1.20.6 | Java 8 bytecode* | The isolated implementation for servers before 1.21. |
+
+\* Use the Java version required by the Minecraft server. The legacy plugin
+itself is Java 8-compatible, but later Minecraft releases require newer Java
+runtimes (for example, Java 17 or Java 21).
+
+Do not install both jars on the same server. The old `-Spigot.jar` classifier no
+longer exists: the modern artifact uses Paper APIs, while the legacy artifact is
+compiled against the 1.8.8 Spigot API, is compatibility-tested through the
+1.20.6 API, and does not contain `api-version` or a modern library-loader
+declaration. The modern artifact is compiled against Paper 1.21 and declares
+`api-version: 1.21`, allowing it to run on later Paper releases.
+
+The legacy jar includes the normal HeadDB browsing, search, favorites, local
+heads, custom-category, purchase, player-storage, API, localization, sound,
+update-checking, metrics, and database-refresh features. Its menus are implemented
+with Bukkit inventories so they work before Paper's modern menu APIs. Purchase
+amounts use inventory presets, and advanced MiniMessage effects are simplified
+on older clients. Folia is not currently supported because the bundled modern
+menu framework is not region-thread safe.
 
 HeadDB checks GitHub Releases for updates on startup and every 24 hours by
 default. Console notifications and player notifications can be configured under
@@ -243,6 +263,19 @@ be overridden with `-Ddev.server.xms=1G -Ddev.server.xmx=4G`.
 
 Running this profile writes `eula=true`. By using it, you are confirming that
 you agree to the [Minecraft EULA](https://aka.ms/MinecraftEULA).
+
+---
+
+## Building both release jars
+
+Run `mvn clean package` from the repository root. The release files are written
+to:
+
+- `headdb-core/target/HeadDB-6.0.3.jar`
+- `headdb-legacy/target/HeadDB-6.0.3-legacy.jar`
+
+The legacy module uses `--release 8`; the modern module uses `--release 21`.
+Maven may run on a newer JDK when building both artifacts together.
 
 ---
 

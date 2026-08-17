@@ -7,7 +7,7 @@
 
     <groupId>com.bitworksmc</groupId>
     <artifactId>HeadDB</artifactId>
-    <version>6.0.2</version>
+    <version>6.0.3</version>
     <packaging>pom</packaging>
 
     <name>HeadDB</name>
@@ -16,15 +16,17 @@
     <modules>
         <module>headdb-api</module>
         <module>headdb-core</module>
+        <module>headdb-legacy</module>
     </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.release>25</maven.compiler.release>
+        <maven.compiler.release>21</maven.compiler.release>
         <adventure.version>5.2.0</adventure.version>
         <annotations.version>26.1.0</annotations.version>
         <paper.minecraft.version>26.2</paper.minecraft.version>
-        <paper.version>${paper.minecraft.version}.build.112-stable</paper.version>
+        <paper.version>1.21-R0.1-SNAPSHOT</paper.version>
+        <spigot.version>1.8.8-R0.1-SNAPSHOT</spigot.version>
         <sqlite.version>3.53.2.1</sqlite.version>
     </properties>
 

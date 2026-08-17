@@ -6,16 +6,16 @@
     <parent>
         <groupId>com.bitworksmc</groupId>
         <artifactId>HeadDB</artifactId>
-        <version>6.0.2</version>
+        <version>6.0.3</version>
     </parent>
 
     <artifactId>headdb-core</artifactId>
 
     <description>Head Database</description>
-    <version>6.0.2</version>
+    <version>6.0.3</version>
 
     <properties>
-        <maven.compiler.release>25</maven.compiler.release>
+        <maven.compiler.release>21</maven.compiler.release>
     </properties>
 
 
@@ -46,7 +46,7 @@
         <dependency>
             <groupId>com.bitworksmc</groupId>
             <artifactId>headdb-api</artifactId>
-            <version>6.0.2</version>
+            <version>6.0.3</version>
         </dependency>
 
         <!-- Hard Dependencies (Provided) -->
@@ -113,7 +113,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Adventure API (shaded and relocated only in the Spigot artifact) -->
+        <!-- Adventure API is supplied by Paper in the modern artifact. -->
         <dependency>
             <groupId>net.kyori</groupId>
             <artifactId>adventure-api</artifactId>
@@ -167,14 +167,14 @@
                 <version>3.5.4</version>
             </plugin>
 
-            <!-- Shade Plugin: two executions in one mvn run -->
+            <!-- Build the modern Paper artifact. Legacy Bukkit has its own module. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.6.2</version>
                 <executions>
 
-                    <!-- 1) Paper jar (main artifact): shade only other libs -->
+                    <!-- Paper jar (main artifact): shade only other libs -->
                     <execution>
                         <id>shade-paper</id>
                         <phase>package</phase>
@@ -194,57 +194,6 @@
 
                             <!-- relocate other libs -->
                             <relocations>
-                                <relocation>
-                                    <pattern>com.github.thesilentpro.grim</pattern>
-                                    <shadedPattern>com.bitworksmc.libs.grim</shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>com.github.thesilentpro.localization</pattern>
-                                    <shadedPattern>com.bitworksmc.libs.localization</shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>com.github.thesilentpro.inputs</pattern>
-                                    <shadedPattern>com.bitworksmc.libs.inputs</shadedPattern>
-                                </relocation>
-                            </relocations>
-
-                            <filters>
-                                <filter>
-                                    <artifact>com.github.thesilentpro.localization:localization-paper</artifact>
-                                    <excludes>
-                                        <!-- Paper-only logger linkage; HeadDB supplies a Bukkit-safe adapter. -->
-                                        <exclude>com/github/thesilentpro/localization/paper/PaperLocalization*.class</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.bitworksmc.headdb.core.HeadDB</mainClass>
-                                </transformer>
-                            </transformers>
-
-                            <minimizeJar>true</minimizeJar>
-                        </configuration>
-                    </execution>
-
-                    <!-- 2) Spigot jar (attached): shade Adventure + other libs -->
-                    <execution>
-                        <id>shade-spigot</id>
-                        <phase>package</phase>
-                        <goals><goal>shade</goal></goals>
-                        <configuration>
-                            <!-- attach as additional artifact -->
-                            <shadedArtifactAttached>true</shadedArtifactAttached>
-                            <shadedClassifierName>spigot</shadedClassifierName>
-                            <finalName>HeadDB-${project.version}-Spigot</finalName>
-
-                            <!-- relocate Adventure -->
-                            <relocations>
-                                <relocation>
-                                    <pattern>net.kyori.adventure</pattern>
-                                    <shadedPattern>com.bitworksmc.libs.adventure</shadedPattern>
-                                </relocation>
                                 <relocation>
                                     <pattern>com.github.thesilentpro.grim</pattern>
                                     <shadedPattern>com.bitworksmc.libs.grim</shadedPattern>
@@ -339,6 +288,8 @@
                                     <arguments>
                                         <argument>-Xms${dev.server.xms}</argument>
                                         <argument>-Xmx${dev.server.xmx}</argument>
+                                        <!-- JOML 1.10.8 otherwise uses sun.misc.Unsafe, which is deprecated on Java 26. -->
+                                        <argument>-Djoml.nounsafe=true</argument>
                                         <argument>-jar</argument>
                                         <argument>paper.jar</argument>
                                         <argument>--nogui</argument>

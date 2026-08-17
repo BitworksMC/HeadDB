@@ -8,7 +8,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * @deprecated Use {@link com.bitworksmc.headdb.api.HeadDatabase} instead.
  */
-@Deprecated(forRemoval = true, since = "6.0.0")
+@Deprecated
 public interface HeadDatabase {
 
     CompletableFuture<List<Head>> update();

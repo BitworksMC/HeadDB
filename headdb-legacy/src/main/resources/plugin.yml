@@ -1,0 +1,44 @@
+name: HeadDB
+description: ${project.description}
+author: TheSilentPro (Silent)
+main: com.bitworksmc.headdb.legacy.LegacyHeadDB
+version: ${project.version}
+
+commands:
+  headdb:
+    usage: /headdb [info|search|give|sounds]
+    description: Search and give heads from HeadDB
+    aliases: [hdb, headdatabase]
+
+permissions:
+  headdb.admin:
+    description: Grants every legacy HeadDB command.
+    default: op
+    children:
+      headdb.command.search: true
+      headdb.command.give: true
+      headdb.command.info: true
+      headdb.command.sounds: true
+      headdb.command.open: true
+      headdb.category.*: true
+      headdb.update.notify: true
+  headdb.command.search:
+    default: op
+  headdb.command.give:
+    default: op
+  headdb.command.info:
+    default: true
+  headdb.command.sounds:
+    default: true
+  headdb.command.open:
+    default: op
+  headdb.category.*:
+    default: op
+  headdb.category.favorites:
+    default: op
+  headdb.category.local:
+    default: op
+  headdb.category.custom:
+    default: op
+  headdb.update.notify:
+    default: op
