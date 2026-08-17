@@ -15,7 +15,7 @@ import java.util.concurrent.ExecutorService;
  *
  * @deprecated Use {@link com.bitworksmc.headdb.api.HeadAPI} instead.
  */
-@Deprecated(forRemoval = true, since = "6.0.0")
+@Deprecated
 public interface HeadAPI {
 
     /**

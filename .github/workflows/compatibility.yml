@@ -1,0 +1,60 @@
+name: Compatibility Matrix
+
+on:
+  push:
+    paths:
+      - "pom.xml"
+      - "headdb-api/**"
+      - "headdb-core/**"
+      - "headdb-legacy/**"
+      - ".github/workflows/compatibility.yml"
+  pull_request:
+    paths:
+      - "pom.xml"
+      - "headdb-api/**"
+      - "headdb-core/**"
+      - "headdb-legacy/**"
+      - ".github/workflows/compatibility.yml"
+  workflow_dispatch:
+
+jobs:
+  modern:
+    name: Modern Paper API ${{ matrix.paper }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - paper: 1.21-R0.1-SNAPSHOT
+            java: "21"
+          - paper: 26.2.build.112-stable
+            java: "25"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      - run: mvn -B -ntp -pl headdb-core -am clean verify -Dpaper.version=${{ matrix.paper }}
+
+  legacy:
+    name: Legacy Spigot API ${{ matrix.spigot }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        spigot:
+          - 1.8.8-R0.1-SNAPSHOT
+          - 1.13.2-R0.1-SNAPSHOT
+          - 1.16.5-R0.1-SNAPSHOT
+          - 1.18.2-R0.1-SNAPSHOT
+          - 1.20.6-R0.1-SNAPSHOT
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - run: mvn -B -ntp -pl headdb-legacy -am clean verify -Dspigot.version=${{ matrix.spigot }}

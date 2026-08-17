@@ -8,7 +8,7 @@ softdepend: [
   #"PlaceholderAPI",
   "Vault"
 ]
-api-version: '26.2'
+api-version: '1.21'
 libraries:
   - "org.xerial:sqlite-jdbc:${sqlite.version}"
 
