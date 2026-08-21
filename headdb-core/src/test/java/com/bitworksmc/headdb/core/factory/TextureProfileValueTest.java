@@ -6,7 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TextureProfileValueTest {
 
@@ -30,6 +32,16 @@ class TextureProfileValueTest {
         );
 
         assertEquals("{\"textures\":{\"SKIN\":{\"url\":\"" + url + "\"}}}", decoded);
+    }
+
+    @Test
+    void identifiesOnlyMojangUrlsForPapersSupportedTexturePath() {
+        assertTrue(TextureProfileValue.isMojangUrl(
+                TextureProfileValue.parseTrustedUrl("https://textures.minecraft.net/texture/abc123")
+        ));
+        assertFalse(TextureProfileValue.isMojangUrl(
+                TextureProfileValue.parseTrustedUrl("https://headdb.net/api/v1/textures/abc123")
+        ));
     }
 
     @Test

@@ -12,10 +12,13 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.profile.PlayerTextures;
 import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.util.*;
 
 @ApiStatus.Internal
@@ -35,12 +38,22 @@ public class PaperItemFactory implements ItemFactory {
         PlayerProfile profile = Bukkit.createProfileExact(UUID.randomUUID(), null);
 
         try {
-            profile.setProperty(new ProfileProperty(
-                    "textures",
-                    TextureProfileValue.fromUrl(head.getTextureUrl())
-            ));
+            URI textureUri = TextureProfileValue.parseTrustedUrl(head.getTextureUrl());
+            if (TextureProfileValue.isMojangUrl(textureUri)) {
+                PlayerTextures textures = profile.getTextures();
+                textures.setSkin(textureUri.toURL());
+                profile.setTextures(textures);
+            } else {
+                // Old catalog caches may still contain a HeadDB-hosted URL. Paper
+                // deliberately rejects those in PlayerTextures, so keep this path
+                // only as a compatibility fallback until the next catalog sync.
+                profile.setProperty(new ProfileProperty(
+                        "textures",
+                        TextureProfileValue.fromUrl(textureUri)
+                ));
+            }
             meta.setPlayerProfile(profile);
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException | MalformedURLException ex) {
             LOGGER.error("Failed to set texture for {} (ID:{} | Texture: {})", head.getName(), head.getId(), head.getTexture(), ex);
             return item;
         }

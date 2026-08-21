@@ -18,6 +18,18 @@ final class TextureProfileValue {
     }
 
     static String fromUrl(String textureUrl) {
+        return fromUrl(parseTrustedUrl(textureUrl));
+    }
+
+    static String fromUrl(URI uri) {
+        parseTrustedUrl(uri.toASCIIString());
+        String payload = "{\"textures\":{\"SKIN\":{\"url\":\""
+                + uri.toASCIIString()
+                + "\"}}}";
+        return Base64.getEncoder().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+    }
+
+    static URI parseTrustedUrl(String textureUrl) {
         URI uri = URI.create(textureUrl);
         String scheme = uri.getScheme();
         String host = uri.getHost();
@@ -29,10 +41,10 @@ final class TextureProfileValue {
         if (!ALLOWED_HOSTS.contains(host.toLowerCase(Locale.ROOT))) {
             throw new IllegalArgumentException("Texture URL host is not trusted: " + host);
         }
+        return uri;
+    }
 
-        String payload = "{\"textures\":{\"SKIN\":{\"url\":\""
-                + uri.toASCIIString()
-                + "\"}}}";
-        return Base64.getEncoder().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+    static boolean isMojangUrl(URI uri) {
+        return "textures.minecraft.net".equalsIgnoreCase(uri.getHost());
     }
 }
