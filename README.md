@@ -122,6 +122,23 @@ Found a bug or have a feature request? Open an issue:
 
 ## 🤝 Using the API
 
+HeadDB 6.0.4 uses two APIs for different purposes:
+
+- The **HeadDB HTTP API** at `https://headdb.net/api/v1` is the managed source
+  for published head data. The modern plugin downloads
+  `/catalog/snapshot` when it needs a complete database and polls
+  `/catalog/changes` with its saved revision for additions, edits, and removals.
+  Server owners normally do not need to call these endpoints themselves. The
+  HTTP API documentation is available at
+  [headdb.net/docs/api](https://headdb.net/docs/api).
+- The **Bukkit Java API** described below is registered by the installed HeadDB
+  plugin. Other plugins use it to search the locally synchronized catalog and
+  create head items without making their own HTTP requests.
+
+The Java API remains the normal integration point for another Minecraft
+plugin. The new HTTP API changes where HeadDB obtains and synchronizes its data;
+it does not remove or replace the Bukkit service.
+
 ### 1. Adding the Dependency
 
 HeadDB publishes its API module via our own Nexus Maven Repo.
