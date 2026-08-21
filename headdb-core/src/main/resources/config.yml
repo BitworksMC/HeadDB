@@ -107,9 +107,10 @@ controls:
 # Database Configuration
 database:
   # Primary URL used to fetch the head database JSON.
-  sourceUrl: "https://raw.githubusercontent.com/BitworksMC/HeadDB/refs/heads/master/heads.json"
+  sourceUrl: "https://headdb.net/api/v1/legacy/heads.json"
   # Optional fallback URLs that are tried in order if the primary source fails.
-  fallbackSourceUrls: []
+  fallbackSourceUrls:
+    - "https://raw.githubusercontent.com/BitworksMC/HeadDB/refs/heads/master/heads.json"
   # Threads pool for the database
   threads: 1
   # Threads pool for the API

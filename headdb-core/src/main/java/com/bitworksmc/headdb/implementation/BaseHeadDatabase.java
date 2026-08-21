@@ -28,7 +28,8 @@ public class BaseHeadDatabase implements HeadDatabase {
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseHeadDatabase.class);
 
     private static final Gson GSON = new GsonBuilder().registerTypeAdapter(Head.class, new HeadMapper()).create();
-    private static final String DEFAULT_SOURCE_URL = "https://raw.githubusercontent.com/BitworksMC/HeadDB/refs/heads/master/heads.json";
+    private static final String DEFAULT_SOURCE_URL = "https://headdb.net/api/v1/legacy/heads.json";
+    private static final String DEFAULT_FALLBACK_SOURCE_URL = "https://raw.githubusercontent.com/BitworksMC/HeadDB/refs/heads/master/heads.json";
     private static final int CONNECT_TIMEOUT_MILLIS = 10_000;
     private static final int READ_TIMEOUT_MILLIS = 30_000;
     private final Executor executor;
@@ -246,7 +247,7 @@ public class BaseHeadDatabase implements HeadDatabase {
 
     private static List<String> normalizeSourceUrls(@Nullable List<String> sourceUrls) {
         if (sourceUrls == null || sourceUrls.isEmpty()) {
-            return List.of(DEFAULT_SOURCE_URL);
+            return List.of(DEFAULT_SOURCE_URL, DEFAULT_FALLBACK_SOURCE_URL);
         }
 
         LinkedHashSet<String> normalized = new LinkedHashSet<>();
@@ -262,7 +263,7 @@ public class BaseHeadDatabase implements HeadDatabase {
         }
 
         if (normalized.isEmpty()) {
-            return List.of(DEFAULT_SOURCE_URL);
+            return List.of(DEFAULT_SOURCE_URL, DEFAULT_FALLBACK_SOURCE_URL);
         }
 
         return List.copyOf(normalized);

@@ -31,6 +31,11 @@
 - **Flexible Querying**  
   Search by name, ID, category, or tags.
 
+Browse the catalog, submit heads, and read the plugin and HTTP API documentation at
+[headdb.net](https://headdb.net). HeadDB 6.x downloads its managed compatibility
+snapshot from `https://headdb.net/api/v1/legacy/heads.json` and falls back to the
+BitworksMC GitHub snapshot if the managed service is unavailable.
+
 ---
 
 ## 🚀 Download & Installation
