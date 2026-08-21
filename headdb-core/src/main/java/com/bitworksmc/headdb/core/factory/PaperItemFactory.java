@@ -1,8 +1,9 @@
 package com.bitworksmc.headdb.core.factory;
 
-import com.destroystokyo.paper.profile.PlayerProfile;
 import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.core.HeadDB;
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
@@ -11,13 +12,10 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
-import org.bukkit.profile.PlayerTextures;
 import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.MalformedURLException;
-import java.net.URI;
 import java.util.*;
 
 @ApiStatus.Internal
@@ -37,10 +35,12 @@ public class PaperItemFactory implements ItemFactory {
         PlayerProfile profile = Bukkit.createProfileExact(UUID.randomUUID(), null);
 
         try {
-            PlayerTextures textures = profile.getTextures();
-            textures.setSkin(URI.create(head.getTextureUrl()).toURL());
-            profile.setTextures(textures);
-        } catch (IllegalArgumentException | MalformedURLException ex) {
+            profile.setProperty(new ProfileProperty(
+                    "textures",
+                    TextureProfileValue.fromUrl(head.getTextureUrl())
+            ));
+            meta.setPlayerProfile(profile);
+        } catch (IllegalArgumentException ex) {
             LOGGER.error("Failed to set texture for {} (ID:{} | Texture: {})", head.getName(), head.getId(), head.getTexture(), ex);
             return item;
         }
@@ -61,7 +61,6 @@ public class PaperItemFactory implements ItemFactory {
         ));
         meta.lore(lore);
 
-        meta.setPlayerProfile(profile);
         item.setItemMeta(meta);
         return item;
     }
