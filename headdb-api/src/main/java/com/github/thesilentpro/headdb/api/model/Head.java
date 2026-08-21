@@ -16,6 +16,15 @@ public interface Head {
 
     String getTexture();
 
+    /**
+     * Returns the complete skin URL used to create this head. Older API
+     * implementations only expose a Mojang texture hash, so that remains the
+     * default.
+     */
+    default String getTextureUrl() {
+        return "https://textures.minecraft.net/texture/" + getTexture();
+    }
+
     String getCategory();
 
     List<String> getTags();

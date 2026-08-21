@@ -5,6 +5,8 @@ import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.implementation.model.HeadMapper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -17,7 +19,12 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
@@ -28,12 +35,15 @@ public class BaseHeadDatabase implements HeadDatabase {
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseHeadDatabase.class);
 
     private static final Gson GSON = new GsonBuilder().registerTypeAdapter(Head.class, new HeadMapper()).create();
-    private static final String DEFAULT_SOURCE_URL = "https://headdb.net/api/v1/legacy/heads.json";
+    private static final String DEFAULT_SOURCE_URL = "https://headdb.net/api/v1/catalog/snapshot";
     private static final String DEFAULT_FALLBACK_SOURCE_URL = "https://raw.githubusercontent.com/BitworksMC/HeadDB/refs/heads/master/heads.json";
+    private static final String DEFAULT_SYNC_URL = "https://headdb.net/api/v1/catalog/changes";
     private static final int CONNECT_TIMEOUT_MILLIS = 10_000;
     private static final int READ_TIMEOUT_MILLIS = 30_000;
     private final Executor executor;
     private final List<String> sourceUrls;
+    private final @Nullable String syncUrl;
+    private final @Nullable Path cachePath;
     private final EnumSet<Index> indexes;
     private final Object updateLock = new Object();
 
@@ -42,17 +52,30 @@ public class BaseHeadDatabase implements HeadDatabase {
      * observing heads from one update alongside indexes from another update.
      */
     private volatile Snapshot snapshot;
+    private volatile int catalogRevision = -1;
 
     // track the latest load
     private volatile CompletableFuture<List<Head>> lastUpdateFuture;
 
     public BaseHeadDatabase(@Nullable Executor executor, @Nullable List<String> sourceUrls, @Nullable Index... indexes) {
+        this(executor, sourceUrls, DEFAULT_SYNC_URL, null, indexes);
+    }
+
+    public BaseHeadDatabase(
+            @Nullable Executor executor,
+            @Nullable List<String> sourceUrls,
+            @Nullable String syncUrl,
+            @Nullable Path cachePath,
+            @Nullable Index... indexes
+    ) {
         this.executor = executor != null ? executor : Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r, "Head Database Worker");
             thread.setDaemon(true);
             return thread;
         });
         this.sourceUrls = normalizeSourceUrls(sourceUrls);
+        this.syncUrl = syncUrl == null || syncUrl.isBlank() ? null : syncUrl.trim();
+        this.cachePath = cachePath;
         this.indexes = indexes == null || indexes.length == 0
                 ? EnumSet.noneOf(Index.class)
                 : EnumSet.copyOf(Arrays.asList(indexes));
@@ -82,21 +105,45 @@ public class BaseHeadDatabase implements HeadDatabase {
                 return currentUpdate;
             }
 
-            lastUpdateFuture = CompletableFuture.supplyAsync(this::loadSnapshot, executor);
+            lastUpdateFuture = CompletableFuture.supplyAsync(this::loadDatabase, executor);
             return lastUpdateFuture;
         }
     }
 
-    private List<Head> loadSnapshot() {
+    private List<Head> loadDatabase() {
+        boolean restoredCache = snapshot == null && restoreCatalogCache();
+        if (snapshot != null && catalogRevision >= 0 && syncUrl != null) {
+            try {
+                return loadChanges();
+            } catch (IOException | RuntimeException ex) {
+                LOGGER.warn("Incremental catalog sync failed: {}. Trying a complete snapshot.", ex.getMessage());
+                LOGGER.debug("Detailed incremental catalog sync error", ex);
+            }
+        }
+
+        try {
+            return loadFullSnapshot();
+        } catch (CompletionException ex) {
+            if (restoredCache && snapshot != null) {
+                LOGGER.warn("Remote catalog is unavailable; using the saved catalog revision {}.", catalogRevision);
+                return snapshot.heads();
+            }
+            throw ex;
+        }
+    }
+
+    private List<Head> loadFullSnapshot() {
         LOGGER.debug("Fetching heads...");
         long start = System.currentTimeMillis();
         Exception lastException = null;
 
         for (String sourceUrl : sourceUrls) {
             try {
-                List<Head> loadedHeads = fetchHeads(sourceUrl);
-                Snapshot loadedSnapshot = buildSnapshot(loadedHeads);
+                FetchedCatalog fetched = fetchHeads(sourceUrl);
+                Snapshot loadedSnapshot = buildSnapshot(fetched.heads());
                 this.snapshot = loadedSnapshot;
+                this.catalogRevision = fetched.revision();
+                persistCatalogCache(loadedSnapshot.heads(), fetched.revision());
 
                 long elapsed = System.currentTimeMillis() - start;
                 LOGGER.debug("Update took {} seconds ({}ms total)", TimeUnit.MILLISECONDS.toSeconds(elapsed), elapsed);
@@ -112,7 +159,7 @@ public class BaseHeadDatabase implements HeadDatabase {
         throw new CompletionException("Failed to update heads from all configured sources", lastException);
     }
 
-    private List<Head> fetchHeads(String sourceUrl) throws IOException {
+    private FetchedCatalog fetchHeads(String sourceUrl) throws IOException {
         URL url = URI.create(sourceUrl).toURL();
         if (!(url.openConnection() instanceof HttpURLConnection request)) {
             throw new IOException("Unsupported database URL protocol: " + url.getProtocol());
@@ -162,9 +209,190 @@ public class BaseHeadDatabase implements HeadDatabase {
 
             long parseTime = System.currentTimeMillis() - parseStart;
             LOGGER.debug("Parsed {} heads from '{}' in {}ms", fetchedHeads.size(), sourceUrl, parseTime);
-            return fetchedHeads;
+            int revision = "1".equals(request.getHeaderField("X-Catalog-Schema"))
+                    ? parseRevision(request.getHeaderField("X-Catalog-Revision"))
+                    : -1;
+            return new FetchedCatalog(fetchedHeads, revision);
         } finally {
             request.disconnect();
+        }
+    }
+
+    private List<Head> loadChanges() throws IOException {
+        Snapshot current = Objects.requireNonNull(snapshot, "snapshot");
+        int fromRevision = catalogRevision;
+        int toRevision = -1;
+        String cursor = null;
+        boolean changed = false;
+        Map<Integer, Head> headsById = new HashMap<>(Math.max(16, current.heads().size() * 2));
+        for (Head head : current.heads()) {
+            headsById.put(head.getId(), head);
+        }
+
+        do {
+            CatalogSyncResponse response = fetchChanges(fromRevision, cursor);
+            if (response.schema != 1 || response.fromRevision != fromRevision) {
+                throw new IOException("Unsupported or inconsistent catalog sync response");
+            }
+            if (toRevision < 0) {
+                toRevision = response.toRevision;
+            } else if (toRevision != response.toRevision) {
+                throw new IOException("Catalog revision changed during pagination");
+            }
+            if (toRevision < fromRevision) {
+                throw new IOException("Catalog returned an older revision");
+            }
+
+            List<CatalogChange> changes = response.changes == null
+                    ? Collections.emptyList()
+                    : response.changes;
+            for (CatalogChange change : changes) {
+                if (change == null || change.headId <= 0) {
+                    throw new IOException("Catalog returned an invalid change");
+                }
+                if ("remove".equals(change.operation)) {
+                    changed |= headsById.remove(change.headId) != null;
+                } else if ("upsert".equals(change.operation)
+                        && change.head != null
+                        && change.head.getId() == change.headId) {
+                    headsById.put(change.headId, change.head);
+                    changed = true;
+                } else {
+                    throw new IOException("Catalog returned an unsupported change operation");
+                }
+            }
+
+            if (response.hasMore && (response.nextCursor == null || response.nextCursor.isBlank())) {
+                throw new IOException("Catalog omitted a required continuation cursor");
+            }
+            cursor = response.hasMore ? response.nextCursor : null;
+        } while (cursor != null);
+
+        if (toRevision < 0) {
+            throw new IOException("Catalog returned no target revision");
+        }
+        if (!changed && toRevision == fromRevision) {
+            LOGGER.debug("Catalog revision {} is already current.", fromRevision);
+            return current.heads();
+        }
+
+        Snapshot next = current;
+        if (changed) {
+            List<Head> mergedHeads = new ArrayList<>(headsById.values());
+            mergedHeads.sort(Comparator.comparingInt(Head::getId));
+            next = buildSnapshot(mergedHeads);
+        }
+        persistCatalogCache(next.heads(), toRevision);
+        this.catalogRevision = toRevision;
+        this.snapshot = next;
+        LOGGER.debug("Catalog sync advanced revision {} to {} with {} published heads.",
+                fromRevision, toRevision, next.heads().size());
+        return next.heads();
+    }
+
+    private CatalogSyncResponse fetchChanges(int sinceRevision, @Nullable String cursor) throws IOException {
+        StringBuilder location = new StringBuilder(Objects.requireNonNull(syncUrl));
+        location.append(syncUrl.contains("?") ? '&' : '?')
+                .append("sinceRevision=").append(sinceRevision)
+                .append("&limit=5000");
+        if (cursor != null) {
+            location.append("&cursor=")
+                    .append(URLEncoder.encode(cursor, StandardCharsets.UTF_8));
+        }
+
+        URL url = URI.create(location.toString()).toURL();
+        if (!(url.openConnection() instanceof HttpURLConnection request)) {
+            throw new IOException("Unsupported sync URL protocol: " + url.getProtocol());
+        }
+        request.setRequestProperty("Accept", "application/json");
+        request.setRequestProperty("Accept-Encoding", "gzip");
+        request.setRequestProperty("User-Agent", "HeadDB");
+        request.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
+        request.setReadTimeout(READ_TIMEOUT_MILLIS);
+        request.setInstanceFollowRedirects(true);
+
+        try {
+            int responseCode = request.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                throw new IOException("Catalog sync HTTP response code " + responseCode);
+            }
+            try (InputStream raw = request.getInputStream();
+                 InputStream in = isGzipEncoded(request.getContentEncoding()) ? new GZIPInputStream(raw) : raw;
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8), 8192)) {
+                CatalogSyncResponse response = GSON.fromJson(reader, CatalogSyncResponse.class);
+                if (response == null) {
+                    throw new IOException("Catalog sync payload was empty");
+                }
+                return response;
+            }
+        } finally {
+            request.disconnect();
+        }
+    }
+
+    private boolean restoreCatalogCache() {
+        if (cachePath == null || !Files.isRegularFile(cachePath)) {
+            return false;
+        }
+        try {
+            JsonObject cache = JsonParser.parseString(Files.readString(cachePath, StandardCharsets.UTF_8))
+                    .getAsJsonObject();
+            if (cache.get("schema").getAsInt() != 1) {
+                throw new IOException("Unsupported cache schema");
+            }
+            int revision = cache.get("revision").getAsInt();
+            List<Head> heads = GSON.fromJson(cache.get("heads"), HeadMapper.HEADS_LIST_TYPE);
+            if (revision < 0 || heads == null || heads.isEmpty()) {
+                throw new IOException("Saved catalog is incomplete");
+            }
+            this.snapshot = buildSnapshot(heads);
+            this.catalogRevision = revision;
+            LOGGER.info("Restored {} heads from saved catalog revision {}.", heads.size(), revision);
+            return true;
+        } catch (IOException | RuntimeException ex) {
+            LOGGER.warn("Could not restore saved head catalog '{}': {}", cachePath, ex.getMessage());
+            LOGGER.debug("Detailed saved catalog error", ex);
+            return false;
+        }
+    }
+
+    private void persistCatalogCache(List<Head> heads, int revision) {
+        if (cachePath == null || revision < 0) {
+            return;
+        }
+        try {
+            Path absoluteCache = cachePath.toAbsolutePath();
+            Path parent = Objects.requireNonNull(absoluteCache.getParent(), "Catalog cache has no parent directory");
+            Files.createDirectories(parent);
+            Path temporary = absoluteCache.resolveSibling(absoluteCache.getFileName() + ".tmp");
+            JsonObject cache = new JsonObject();
+            cache.addProperty("schema", 1);
+            cache.addProperty("revision", revision);
+            cache.add("heads", GSON.toJsonTree(heads, HeadMapper.HEADS_LIST_TYPE));
+            Files.writeString(temporary, GSON.toJson(cache), StandardCharsets.UTF_8);
+            try {
+                Files.move(temporary, absoluteCache,
+                        StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary, absoluteCache, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException | RuntimeException ex) {
+            LOGGER.warn("Could not save the local head catalog cache: {}", ex.getMessage());
+            LOGGER.debug("Detailed catalog cache write error", ex);
+        }
+    }
+
+    private static int parseRevision(@Nullable String rawRevision) throws IOException {
+        if (rawRevision == null) {
+            throw new IOException("Catalog snapshot omitted its revision");
+        }
+        try {
+            int revision = Integer.parseInt(rawRevision);
+            if (revision < 0) throw new NumberFormatException("negative revision");
+            return revision;
+        } catch (NumberFormatException ex) {
+            throw new IOException("Catalog snapshot returned an invalid revision", ex);
         }
     }
 
@@ -405,6 +633,28 @@ public class BaseHeadDatabase implements HeadDatabase {
 
     private boolean hasIndex(Index index) {
         return indexes.contains(index);
+    }
+
+    public int getCatalogRevision() {
+        return catalogRevision;
+    }
+
+    private record FetchedCatalog(List<Head> heads, int revision) {
+    }
+
+    private static final class CatalogSyncResponse {
+        private int schema;
+        private int fromRevision;
+        private int toRevision;
+        private List<CatalogChange> changes;
+        private boolean hasMore;
+        private String nextCursor;
+    }
+
+    private static final class CatalogChange {
+        private String operation;
+        private int headId;
+        private Head head;
     }
 
     private record Snapshot(

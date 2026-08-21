@@ -32,9 +32,9 @@
   Search by name, ID, category, or tags.
 
 Browse the catalog, submit heads, and read the plugin and HTTP API documentation at
-[headdb.net](https://headdb.net). HeadDB 6.x downloads its managed compatibility
-snapshot from `https://headdb.net/api/v1/legacy/heads.json` and falls back to the
-BitworksMC GitHub snapshot if the managed service is unavailable.
+[headdb.net](https://headdb.net). The modern plugin restores its saved catalog,
+then polls the managed revision feed for additions, edits, and removals. A complete
+snapshot and the legacy BitworksMC GitHub catalog remain available for recovery.
 
 ---
 

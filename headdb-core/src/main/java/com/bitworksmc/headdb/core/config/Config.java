@@ -24,7 +24,9 @@ public class Config {
     private static final Logger LOGGER = LoggerFactory.getLogger(Config.class);
 
     // === Default Head Textures ===
-    private static final String DEFAULT_DATABASE_SOURCE_URL = "https://headdb.net/api/v1/legacy/heads.json";
+    private static final String DEFAULT_DATABASE_SOURCE_URL = "https://headdb.net/api/v1/catalog/snapshot";
+    private static final String DEFAULT_DATABASE_SYNC_URL = "https://headdb.net/api/v1/catalog/changes";
+    private static final String LEGACY_DATABASE_SOURCE_URL = "https://headdb.net/api/v1/legacy/heads.json";
     private static final String DEFAULT_BACK_TEXTURE = "e5da4847272582265bdaca367237c96122b139f4e597fbc6667d3fb75fea7cf6";
     private static final String DEFAULT_INFO_TEXTURE = "93e5cb83cfdf42e9c4d8a3ecb4f889f6a5f418dce0a894c97e416a0eaf0d58";
     private static final String DEFAULT_NEXT_TEXTURE = "62bfb7ed2bd9f1d1f85c3d6ffb1626f252c5ecfd79d51a3f56ebf8e0c3c91";
@@ -38,12 +40,14 @@ public class Config {
     // General
     private long playerStorageSaveInterval;
     private int databaseThreads, apiThreads;
+    private long databaseSyncIntervalMinutes;
     private boolean preloadHeads, trackPage, updaterEnabled;
     private boolean updateCheckerEnabled, updateCheckerNotifyConsole, updateCheckerNotifyPlayers;
     private long updateCheckerIntervalHours;
     private int maxBuyAmount;
     private List<Integer> omit;
     private List<String> databaseSourceUrls = List.of(DEFAULT_DATABASE_SOURCE_URL);
+    private String databaseSyncUrl = DEFAULT_DATABASE_SYNC_URL;
 
     // Indexing
     private boolean indexingEnabled, indexById, indexByTexture, indexByCategory, indexByTag;
@@ -90,6 +94,11 @@ public class Config {
         preloadHeads = config.getBoolean("preloadHeads", false);
         databaseThreads = positiveInt("database.threads", 1);
         apiThreads = positiveInt("database.apiThreads", 1);
+        databaseSyncIntervalMinutes = positiveLong("database.syncIntervalMinutes", 15L);
+        databaseSyncUrl = Optional.ofNullable(config.getString("database.syncUrl", DEFAULT_DATABASE_SYNC_URL))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .orElse(null);
         maxBuyAmount = positiveInt("maxBuyAmount", 2304);
         omit = config.getIntegerList("head.omit");
         loadDatabaseSources();
@@ -106,11 +115,16 @@ public class Config {
         LOGGER.trace(" - databaseThreads = {}", databaseThreads);
         LOGGER.trace(" - apiThreads = {}", apiThreads);
         LOGGER.trace(" - databaseSourceUrls = {}", databaseSourceUrls);
+        LOGGER.trace(" - databaseSyncUrl = {}", databaseSyncUrl);
+        LOGGER.trace(" - databaseSyncIntervalMinutes = {}", databaseSyncIntervalMinutes);
         LOGGER.trace(" - maxBuyAmount = {}", maxBuyAmount);
     }
 
     private void loadDatabaseSources() {
         String primarySource = config.getString("database.sourceUrl", DEFAULT_DATABASE_SOURCE_URL);
+        if (LEGACY_DATABASE_SOURCE_URL.equals(primarySource)) {
+            primarySource = DEFAULT_DATABASE_SOURCE_URL;
+        }
         List<String> fallbackSources = config.getStringList("database.fallbackSourceUrls");
 
         LinkedHashSet<String> orderedSources = new LinkedHashSet<>();
@@ -120,6 +134,10 @@ public class Config {
             if (!trimmed.isEmpty()) {
                 orderedSources.add(trimmed);
             }
+        }
+
+        if (DEFAULT_DATABASE_SOURCE_URL.equals(primarySource)) {
+            orderedSources.add(LEGACY_DATABASE_SOURCE_URL);
         }
 
         for (String source : fallbackSources) {
@@ -448,6 +466,8 @@ public class Config {
     public int getDatabaseThreads() { return databaseThreads; }
     public int getApiThreads() { return apiThreads; }
     public List<String> getDatabaseSourceUrls() { return databaseSourceUrls; }
+    public @Nullable String getDatabaseSyncUrl() { return databaseSyncUrl; }
+    public long getDatabaseSyncIntervalMinutes() { return databaseSyncIntervalMinutes; }
     public int getMaxBuyAmount() { return maxBuyAmount; }
     public List<Integer> getOmit() { return omit; }
 

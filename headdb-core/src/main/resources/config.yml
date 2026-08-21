@@ -1,6 +1,4 @@
-# The updater will update the local database every 24h since server start.
-# If you want the fastest updates you can schedule a task externally(most server hosts provide a way) and disable this option.
-# The remote database is updated at 00:00 UTC every day, schedule it after that.
+# Periodically apply new, edited, and removed heads from the managed API.
 updater: true
 
 # Check GitHub Releases for newer HeadDB versions without blocking server startup.
@@ -106,10 +104,15 @@ controls:
 
 # Database Configuration
 database:
-  # Primary URL used to fetch the head database JSON.
-  sourceUrl: "https://headdb.net/api/v1/legacy/heads.json"
+  # Complete catalog used on first startup or if incremental state must be rebuilt.
+  sourceUrl: "https://headdb.net/api/v1/catalog/snapshot"
+  # Revision feed used after the initial snapshot. Set to an empty string to
+  # disable incremental sync and download the complete source on each refresh.
+  syncUrl: "https://headdb.net/api/v1/catalog/changes"
+  syncIntervalMinutes: 15
   # Optional fallback URLs that are tried in order if the primary source fails.
   fallbackSourceUrls:
+    - "https://headdb.net/api/v1/legacy/heads.json"
     - "https://raw.githubusercontent.com/BitworksMC/HeadDB/refs/heads/master/heads.json"
   # Threads pool for the database
   threads: 1

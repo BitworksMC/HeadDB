@@ -3,7 +3,6 @@ package com.bitworksmc.headdb.core;
 import com.github.thesilentpro.grim.listener.PageListeners;
 import com.github.thesilentpro.grim.page.registry.PageRegistry;
 import com.bitworksmc.headdb.api.HeadAPI;
-import com.bitworksmc.headdb.api.HeadDatabase;
 import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.core.api.LegacyHeadAPIAdapter;
 import com.bitworksmc.headdb.core.command.HDBMainCommand;
@@ -42,7 +41,7 @@ public class HeadDB extends JavaPlugin {
     private static final int PRELOAD_BATCH_SIZE = 250;
 
     private ConfigManager configManager;
-    private HeadDatabase headDatabase;
+    private BaseHeadDatabase headDatabase;
     private HeadAPI headApi;
     private ExecutorService databaseExecutor;
     private HDBSubCommandManager subCommandManager;
@@ -88,6 +87,8 @@ public class HeadDB extends JavaPlugin {
         this.headDatabase = new BaseHeadDatabase(
                 databaseExecutor,
                 config.getDatabaseSourceUrls(),
+                config.getDatabaseSyncUrl(),
+                getDataFolder().toPath().resolve("catalog-cache.json"),
                 config.resolveEnabledIndexes()
         );
         this.headDatabase.update().thenAcceptAsync(heads -> handleDatabaseUpdate(config, heads), Compatibility.getMainThreadExecutor(this));
@@ -131,13 +132,19 @@ public class HeadDB extends JavaPlugin {
 
         // Start updater task
         if (config.isUpdaterEnabled()) {
-            Compatibility.runAsyncRepeating(this, () ->
+            long syncIntervalTicks = config.getDatabaseSyncIntervalMinutes() * 60L * 20L;
+            Compatibility.runAsyncRepeating(this, () -> {
+                    int previousRevision = this.headDatabase.getCatalogRevision();
                     this.headDatabase.update().thenAcceptAsync(heads -> {
-                        handleDatabaseUpdate(config, heads);
-                        this.menuManager.registerDefaults(this, heads);
-                    }, Compatibility.getMainThreadExecutor(this)),
-                    86400L * 20L,
-                    86400L * 20L
+                        int currentRevision = this.headDatabase.getCatalogRevision();
+                        if (currentRevision != previousRevision || currentRevision < 0) {
+                            handleDatabaseUpdate(config, heads);
+                            this.menuManager.registerDefaults(this, heads);
+                        }
+                    }, Compatibility.getMainThreadExecutor(this));
+                },
+                    syncIntervalTicks,
+                    syncIntervalTicks
             );
         }
 

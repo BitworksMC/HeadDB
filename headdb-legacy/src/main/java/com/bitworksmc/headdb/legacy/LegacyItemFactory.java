@@ -49,7 +49,7 @@ final class LegacyItemFactory {
         }
         meta.setLore(lore);
 
-        if (!applyBukkitProfile(meta, head.getTexture()) && !applyAuthlibProfile(meta, head.getTexture())) {
+        if (!applyBukkitProfile(meta, head.getTextureUrl()) && !applyAuthlibProfile(meta, head.getTextureUrl())) {
             meta.setOwner("MHF_Question");
         }
         item.setItemMeta(meta);
@@ -72,7 +72,8 @@ final class LegacyItemFactory {
     static ItemStack createTextureHead(String textureHash) {
         ItemStack item = newPlayerHead();
         SkullMeta meta = (SkullMeta) item.getItemMeta();
-        if (!applyBukkitProfile(meta, textureHash) && !applyAuthlibProfile(meta, textureHash)) {
+        String textureUrl = "https://textures.minecraft.net/texture/" + textureHash;
+        if (!applyBukkitProfile(meta, textureUrl) && !applyAuthlibProfile(meta, textureUrl)) {
             meta.setOwner("MHF_Question");
         }
         item.setItemMeta(meta);
@@ -115,7 +116,7 @@ final class LegacyItemFactory {
      * Uses the Bukkit profile API introduced after the legacy GameProfile era.
      * All types are resolved reflectively so the class still loads on 1.8.
      */
-    private static boolean applyBukkitProfile(SkullMeta meta, String textureHash) {
+    private static boolean applyBukkitProfile(SkullMeta meta, String textureUrl) {
         try {
             Class<?> profileClass = Class.forName("org.bukkit.profile.PlayerProfile");
             Method createProfile = org.bukkit.Bukkit.class.getMethod(
@@ -123,7 +124,7 @@ final class LegacyItemFactory {
             Object profile = createProfile.invoke(null, UUID.randomUUID(), null);
             Object textures = profileClass.getMethod("getTextures").invoke(profile);
             textures.getClass().getMethod("setSkin", URL.class).invoke(
-                    textures, new URL("https://textures.minecraft.net/texture/" + textureHash));
+                    textures, new URL(textureUrl));
             invokeCompatible(profile, "setTextures", textures);
 
             if (!invokeCompatible(meta, "setOwnerProfile", profile)) {
@@ -141,14 +142,13 @@ final class LegacyItemFactory {
     /**
      * CraftBukkit 1.8-1.20 stores Mojang's GameProfile directly in SkullMeta.
      */
-    private static boolean applyAuthlibProfile(SkullMeta meta, String textureHash) {
+    private static boolean applyAuthlibProfile(SkullMeta meta, String textureUrl) {
         try {
             Class<?> profileClass = Class.forName("com.mojang.authlib.GameProfile");
             Constructor<?> profileConstructor = profileClass.getConstructor(UUID.class, String.class);
             Object profile = profileConstructor.newInstance(UUID.randomUUID(), null);
 
-            String json = "{\"textures\":{\"SKIN\":{\"url\":\"https://textures.minecraft.net/texture/"
-                    + textureHash + "\"}}}";
+            String json = "{\"textures\":{\"SKIN\":{\"url\":\"" + textureUrl + "\"}}}";
             String encoded = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
 
             Class<?> propertyClass = Class.forName("com.mojang.authlib.properties.Property");
