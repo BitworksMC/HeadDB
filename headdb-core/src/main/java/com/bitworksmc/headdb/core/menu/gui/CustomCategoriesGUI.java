@@ -7,9 +7,8 @@ import com.bitworksmc.headdb.core.config.CustomCategory;
 import com.bitworksmc.headdb.core.menu.CustomCategoriesMenu;
 import com.bitworksmc.headdb.core.util.Compatibility;
 import com.bitworksmc.headdb.core.util.Utils;
-import com.bitworksmc.headdb.core.util.Utils;
+import com.bitworksmc.headdb.core.util.WebsiteLinks;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -21,11 +20,10 @@ import org.bukkit.inventory.ItemStack;
 import java.util.List;
 
 public class CustomCategoriesGUI extends SafePaginatedGUI {
-    private static final String DISCORD_URL = "https://discord.gg/j8BAsz8Ac7";
-
     public CustomCategoriesGUI(HeadDB plugin, String key, Component title, List<CustomCategory> categories) {
         super(new NamespacedKey(plugin, Utils.normalizeNamespacedKey("gui_" + key)));
 
+        String submissionUrl = WebsiteLinks.submissionUrl(plugin.getCfg().getWebsiteUrl());
         // Chunk heads list
         for (List<CustomCategory> headsChunk : Utils.chunk(categories, plugin.getCfg().getHeadsMenuRows() * 9)) {
             CustomCategoriesMenu headsMenu = new CustomCategoriesMenu(plugin, this, title, headsChunk);
@@ -55,11 +53,11 @@ public class CustomCategoriesGUI extends SafePaginatedGUI {
                         Component.text("📥 Submit your favorite or original heads")
                                 .decoration(TextDecoration.ITALIC, false)
                                 .color(NamedTextColor.YELLOW),
-                        Component.text("✨ Directly through our community Discord!")
+                        Component.text("✨ Send it through headdb.net for review!")
                                 .decoration(TextDecoration.ITALIC, false)
                                 .color(NamedTextColor.YELLOW),
                         Component.text(""),
-                        Component.text("🔗 Discord > " + DISCORD_URL)
+                        Component.text("🔗 Submit > " + submissionUrl)
                                 .decoration(TextDecoration.ITALIC, false)
                                 .color(NamedTextColor.YELLOW)
                 };
@@ -81,10 +79,13 @@ public class CustomCategoriesGUI extends SafePaginatedGUI {
                 headsMenu.setButton(53, new SimpleButton(infoItem, ctx -> {
                     Compatibility.sendMessage(
                             ctx.event().getWhoClicked(),
-                            Component.text("Click to join: " + DISCORD_URL)
-                                    .color(NamedTextColor.AQUA)
-                                    .clickEvent(ClickEvent.openUrl(DISCORD_URL))
-                                    .decoration(TextDecoration.UNDERLINED, true)
+                            WebsiteLinks.makeClickable(
+                                    Component.text("Click to submit a head: " + submissionUrl)
+                                            .color(NamedTextColor.AQUA)
+                                            .decoration(TextDecoration.UNDERLINED, true),
+                                    submissionUrl,
+                                    Component.text("Open " + submissionUrl, NamedTextColor.AQUA)
+                            )
                     );
                 }));
             }

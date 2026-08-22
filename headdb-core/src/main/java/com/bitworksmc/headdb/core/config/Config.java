@@ -3,6 +3,7 @@ package com.bitworksmc.headdb.core.config;
 import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.util.Compatibility;
+import com.bitworksmc.headdb.core.util.WebsiteLinks;
 import com.bitworksmc.headdb.implementation.Index;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -48,6 +49,8 @@ public class Config {
     private List<Integer> omit;
     private List<String> databaseSourceUrls = List.of(DEFAULT_DATABASE_SOURCE_URL);
     private String databaseSyncUrl = DEFAULT_DATABASE_SYNC_URL;
+    private String websiteUrl = WebsiteLinks.DEFAULT_BASE_URL;
+    private boolean websiteSearchHintEnabled;
 
     // Indexing
     private boolean indexingEnabled, indexById, indexByTexture, indexByCategory, indexByTag;
@@ -95,6 +98,8 @@ public class Config {
         databaseThreads = positiveInt("database.threads", 1);
         apiThreads = positiveInt("database.apiThreads", 1);
         databaseSyncIntervalMinutes = positiveLong("database.syncIntervalMinutes", 15L);
+        websiteUrl = WebsiteLinks.normalizeBaseUrl(config.getString("website.url", WebsiteLinks.DEFAULT_BASE_URL));
+        websiteSearchHintEnabled = config.getBoolean("website.searchHint.enabled", true);
         databaseSyncUrl = Optional.ofNullable(config.getString("database.syncUrl", DEFAULT_DATABASE_SYNC_URL))
                 .map(String::trim)
                 .filter(value -> !value.isEmpty())
@@ -117,6 +122,8 @@ public class Config {
         LOGGER.trace(" - databaseSourceUrls = {}", databaseSourceUrls);
         LOGGER.trace(" - databaseSyncUrl = {}", databaseSyncUrl);
         LOGGER.trace(" - databaseSyncIntervalMinutes = {}", databaseSyncIntervalMinutes);
+        LOGGER.trace(" - websiteUrl = {}", websiteUrl);
+        LOGGER.trace(" - websiteSearchHintEnabled = {}", websiteSearchHintEnabled);
         LOGGER.trace(" - maxBuyAmount = {}", maxBuyAmount);
     }
 
@@ -468,6 +475,8 @@ public class Config {
     public List<String> getDatabaseSourceUrls() { return databaseSourceUrls; }
     public @Nullable String getDatabaseSyncUrl() { return databaseSyncUrl; }
     public long getDatabaseSyncIntervalMinutes() { return databaseSyncIntervalMinutes; }
+    public String getWebsiteUrl() { return websiteUrl; }
+    public boolean isWebsiteSearchHintEnabled() { return websiteSearchHintEnabled; }
     public int getMaxBuyAmount() { return maxBuyAmount; }
     public List<Integer> getOmit() { return omit; }
 

@@ -13,9 +13,9 @@ import com.bitworksmc.headdb.core.menu.gui.LocalHeadsGUI;
 import com.bitworksmc.headdb.core.storage.PlayerData;
 import com.bitworksmc.headdb.core.util.Compatibility;
 import com.bitworksmc.headdb.core.util.PermissionUtil;
+import com.bitworksmc.headdb.core.util.WebsiteLinks;
 import com.github.thesilentpro.inputs.paper.PaperInput;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
@@ -30,7 +30,6 @@ import java.util.concurrent.CompletableFuture;
 public class MainMenu extends SimplePage {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MainMenu.class);
-    private static final String DISCORD_URL = "https://discord.gg/j8BAsz8Ac7";
     private static final int[] CATEGORY_SLOTS = {11, 12, 13, 14, 15, 20, 21, 22, 23, 24, 29, 30, 31, 32, 33};
 
     public MainMenu(HeadDB plugin, List<Head> heads) {
@@ -239,14 +238,15 @@ public class MainMenu extends SimplePage {
             return;
         }
 
+        String submissionUrl = WebsiteLinks.submissionUrl(plugin.getCfg().getWebsiteUrl());
         Component[] lore = new Component[]{
                 Component.text("❓ Didn't spot the perfect head in our collection?").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
                 Component.text("🎯 We're always adding more — and you can help!").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
                 Component.text(""),
                 Component.text("📥 Submit your favorite or original heads").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
-                Component.text("✨ Directly through our community Discord!").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
+                Component.text("✨ Send it through headdb.net for review!").color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false),
                 Component.text(""),
-                Component.text("🔗 Discord > " + DISCORD_URL).color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)
+                Component.text("🔗 Submit > " + submissionUrl).color(NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false)
         };
 
         ItemStack item = plugin.getHeadApi()
@@ -257,10 +257,13 @@ public class MainMenu extends SimplePage {
 
         setButton(53, new SimpleButton(item, ctx -> Compatibility.sendMessage(
                 ctx.event().getWhoClicked(),
-                Component.text("Click to join: " + DISCORD_URL)
-                        .color(NamedTextColor.AQUA)
-                        .clickEvent(ClickEvent.openUrl(DISCORD_URL))
-                        .decoration(TextDecoration.UNDERLINED, true)
+                WebsiteLinks.makeClickable(
+                        Component.text("Click to submit a head: " + submissionUrl)
+                                .color(NamedTextColor.AQUA)
+                                .decoration(TextDecoration.UNDERLINED, true),
+                        submissionUrl,
+                        Component.text("Open " + submissionUrl, NamedTextColor.AQUA)
+                )
         )));
     }
 

@@ -18,6 +18,13 @@ preloadHeads: false
 # Example: Player is on page 10 of the category, next time they open that category they will start from that page instead of the first.
 trackPage: true
 
+# Public website links shown to players.
+website:
+  url: "https://headdb.net"
+  searchHint:
+    # Show a clickable website link after /hdb search completes.
+    enabled: true
+
 # If enabled shows the info item on how you can add heads to the database.-
 showInfoItem: true
 

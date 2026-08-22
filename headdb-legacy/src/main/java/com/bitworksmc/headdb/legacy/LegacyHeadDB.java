@@ -15,6 +15,11 @@ import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bstats.bukkit.Metrics;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -164,11 +169,31 @@ public final class LegacyHeadDB extends JavaPlugin implements CommandExecutor, T
         if (args[0].equalsIgnoreCase("sounds")) {
             return toggleSounds(sender);
         }
+        if (args[0].equalsIgnoreCase("submit")) {
+            return submit(sender);
+        }
         if (args[0].equalsIgnoreCase("open")) {
             return open(sender, args);
         }
 
-        sender.sendMessage(ChatColor.RED + "Usage: /" + label + " [info|search <name>|give <id> [player]]");
+        sender.sendMessage(ChatColor.RED + "Usage: /" + label + " [info|search <name>|give <id> [player]|submit]");
+        return true;
+    }
+
+    private boolean submit(CommandSender sender) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(messages.get("noConsole", "Only players can use this command."));
+            return true;
+        }
+        if (!sender.hasPermission("headdb.command.submit")) return denied(sender);
+
+        String url = LegacyWebsiteLinks.submissionUrl(getConfig().getString("website.url", "https://headdb.net"));
+        sendWebsiteLink(
+                (Player) sender,
+                messages.get("command.submit.link", "Have a head to share? Submit it on headdb.net for review."),
+                url,
+                "Open " + url
+        );
         return true;
     }
 
@@ -228,6 +253,7 @@ public final class LegacyHeadDB extends JavaPlugin implements CommandExecutor, T
                         menus.openSearch((Player) sender, query, matches);
                         sender.sendMessage(messages.get("command.search.found", "Found {amount} heads!",
                                 "amount", String.valueOf(matches.size())));
+                        sendSearchWebsiteHint((Player) sender, args);
                         return;
                     }
                     sender.sendMessage(ChatColor.GOLD + "HeadDB matches for '" + query + "':");
@@ -350,10 +376,41 @@ public final class LegacyHeadDB extends JavaPlugin implements CommandExecutor, T
         return true;
     }
 
+    private void sendSearchWebsiteHint(Player player, String[] args) {
+        if (!getConfig().getBoolean("website.searchHint.enabled", true)) {
+            return;
+        }
+        String url = LegacyWebsiteLinks.searchUrl(
+                getConfig().getString("website.url", "https://headdb.net"),
+                args
+        );
+        sendWebsiteLink(
+                player,
+                messages.get("command.search.website",
+                        "Want to refine this search faster? Open it on headdb.net to filter results and copy ready-to-use commands."),
+                url,
+                "Open this search on headdb.net"
+        );
+    }
+
+    private void sendWebsiteLink(Player player, String text, String url, String hoverText) {
+        BaseComponent[] components = TextComponent.fromLegacyText(text);
+        ClickEvent clickEvent = new ClickEvent(ClickEvent.Action.OPEN_URL, url);
+        HoverEvent hoverEvent = new HoverEvent(
+                HoverEvent.Action.SHOW_TEXT,
+                new ComponentBuilder(hoverText).color(net.md_5.bungee.api.ChatColor.AQUA).create()
+        );
+        for (BaseComponent component : components) {
+            component.setClickEvent(clickEvent);
+            component.setHoverEvent(hoverEvent);
+        }
+        player.spigot().sendMessage(components);
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return prefix(Arrays.asList("open", "info", "search", "give", "sounds"), args[0]);
+            return prefix(Arrays.asList("open", "info", "search", "give", "sounds", "submit"), args[0]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
             List<String> players = new ArrayList<String>();

@@ -6,6 +6,7 @@ import com.bitworksmc.headdb.core.command.sub.HDBCommandInfo;
 import com.bitworksmc.headdb.core.command.sub.HDBCommandOpen;
 import com.bitworksmc.headdb.core.command.sub.HDBCommandSearch;
 import com.bitworksmc.headdb.core.command.sub.HDBCommandSounds;
+import com.bitworksmc.headdb.core.command.sub.HDBCommandSubmit;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,6 +31,7 @@ public class HDBSubCommandManager {
         register(new HDBCommandSearch(plugin));
         register(new HDBCommandOpen(plugin));
         register(new HDBCommandSounds(plugin));
+        register(new HDBCommandSubmit(plugin));
     }
 
     public void register(HDBSubCommand command) {

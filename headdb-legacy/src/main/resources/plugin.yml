@@ -6,7 +6,7 @@ version: ${project.version}
 
 commands:
   headdb:
-    usage: /headdb [info|search|give|sounds]
+    usage: /headdb [info|search|give|sounds|submit]
     description: Search and give heads from HeadDB
     aliases: [hdb, headdatabase]
 
@@ -20,6 +20,7 @@ permissions:
       headdb.command.info: true
       headdb.command.sounds: true
       headdb.command.open: true
+      headdb.command.submit: true
       headdb.category.*: true
       headdb.update.notify: true
   headdb.command.search:
@@ -32,6 +33,8 @@ permissions:
     default: true
   headdb.command.open:
     default: op
+  headdb.command.submit:
+    default: true
   headdb.category.*:
     default: op
   headdb.category.favorites:

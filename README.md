@@ -30,6 +30,9 @@
   The database loads on a background thread.  
 - **Flexible Querying**  
   Search by name, ID, category, or tags.
+- **Website handoff**
+  `/hdb submit` opens the public submission form, and in-game searches can link
+  directly to the equivalent browser search for richer filtering and copyable commands.
 
 Browse the catalog, submit heads, and read the plugin and HTTP API documentation at
 [headdb.net](https://headdb.net). The modern plugin restores its saved catalog,
@@ -93,6 +96,7 @@ Choose your preferred source:
 | `headdb.command.give` | Give a database head by command. |
 | `headdb.command.info` | View HeadDB and server version information. |
 | `headdb.command.sounds` | Toggle personal HeadDB interface sounds with `/hdb sounds`. |
+| `headdb.command.submit` | Show the clickable headdb.net submission link with `/hdb submit`. |
 | `headdb.update.notify` | Receive a notification with the latest-release download link. |
 | `headdb.category.*` | Access every category. |
 | `headdb.category.<category_id>` | Access one database or custom category. |

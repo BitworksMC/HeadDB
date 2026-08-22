@@ -6,7 +6,9 @@ import com.bitworksmc.headdb.core.command.HDBSubCommand;
 import com.bitworksmc.headdb.core.menu.gui.HeadsGUI;
 import com.bitworksmc.headdb.core.util.Compatibility;
 import com.bitworksmc.headdb.core.util.PermissionUtil;
+import com.bitworksmc.headdb.core.util.WebsiteLinks;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.slf4j.Logger;
@@ -170,7 +172,12 @@ public class HDBCommandSearch extends HDBSubCommand {
                 }
             }
 
-            return new SearchResult(result, qName, true);
+            return new SearchResult(
+                    result,
+                    qName,
+                    WebsiteLinks.searchUrl(plugin.getCfg().getWebsiteUrl(), nameQuery, category, tags, ids),
+                    true
+            );
         }).thenAcceptAsync(searchResult -> {
             if (!searchResult.valid) {
                 Compatibility.playSound(player, plugin.getSoundConfig().get("failure"));
@@ -181,10 +188,12 @@ public class HDBCommandSearch extends HDBSubCommand {
                     .toList();
             if (heads == null || heads.isEmpty()) {
                 this.plugin.getLocalization().sendMessage(player, "command.search.none");
+                sendWebsiteHint(player, searchResult.websiteUrl);
                 return;
             }
 
             plugin.getLocalization().sendMessage(player, "command.search.found", msg -> msg.replaceText(builder -> builder.matchLiteral("{amount}").replacement(String.valueOf(heads.size()))).replaceText(builder -> builder.matchLiteral("{name}").replacement(searchResult.name)));
+            sendWebsiteHint(player, searchResult.websiteUrl);
 
             HeadsGUI gui = new HeadsGUI(
                     plugin,
@@ -212,9 +221,26 @@ public class HDBCommandSearch extends HDBSubCommand {
         return completions;
     }
 
-    private record SearchResult(List<Head> heads, String name, boolean valid) {
+    private void sendWebsiteHint(Player player, String url) {
+        if (!plugin.getCfg().isWebsiteSearchHintEnabled()) {
+            return;
+        }
+        Component message = plugin.getLocalization().getMessage(player.getUniqueId(), "command.search.website")
+                .orElseGet(() -> Component.text()
+                        .append(Component.text("Want to refine this search faster? ", NamedTextColor.GRAY))
+                        .append(Component.text("Open it on headdb.net", NamedTextColor.AQUA))
+                        .append(Component.text(" to filter results and copy ready-to-use commands.", NamedTextColor.GRAY))
+                        .build());
+        Compatibility.sendMessage(player, WebsiteLinks.makeClickable(
+                message,
+                url,
+                Component.text("Open this search on headdb.net", NamedTextColor.AQUA)
+        ));
+    }
+
+    private record SearchResult(List<Head> heads, String name, String websiteUrl, boolean valid) {
         private static SearchResult invalid() {
-            return new SearchResult(List.of(), "", false);
+            return new SearchResult(List.of(), "", "", false);
         }
     }
 
