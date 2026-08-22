@@ -173,6 +173,7 @@ final class LegacyItemFactory {
             if (method.getName().equals(name)
                     && method.getParameterTypes().length == 1
                     && method.getParameterTypes()[0].isInstance(argument)) {
+                method.setAccessible(true);
                 method.invoke(target, argument);
                 return true;
             }
