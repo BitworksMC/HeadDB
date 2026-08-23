@@ -11,6 +11,7 @@ final class LegacyHead implements Head {
     private int id;
     private String name;
     private String texture;
+    private String textureUrl;
     private String category;
     private List<String> tags;
     private transient volatile ItemStack cachedItem;
@@ -28,6 +29,11 @@ final class LegacyHead implements Head {
     @Override
     public String getTexture() {
         return texture;
+    }
+
+    @Override
+    public String getTextureUrl() {
+        return isEmpty(textureUrl) ? Head.super.getTextureUrl() : textureUrl;
     }
 
     @Override

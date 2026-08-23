@@ -26,6 +26,8 @@ menu:
     remove: "<gold>{name} <gray>was <red>REMOVED <gray>from your favorites!"
   search:
     name: "<red>HeadDB <gray>» <gold>Search <gray>» <gold>{name}"
+  recent:
+    name: "<red>HeadDB <gray>» <gold>Recently added"
   customCategories:
     name: "<red>HeadDB <gray>» <gold>More Categories"
   purchase:
@@ -85,6 +87,7 @@ command:
     invalidCategory: "<red>Invalid category: <yellow>{category}"
 
   give:
+    consoleUsage: "<red>Console usage: /hdb give <player> <amount> <head>"
     invalidId: "<red>Invalid head id » <yellow>{id}"
     invalidAmount: "<red>Amount must be between <yellow>1<red> and <yellow>{max}"
     failed: "<red>Could not give that head. Check the server console for details."
@@ -99,6 +102,7 @@ command:
     failed: "<red>The search failed. Check the server console for details."
     none: "<red>No heads found!"
     found: "<gray>Found <green>{amount} <gray>heads!"
+    website: "<gray>Want to refine this search faster? <aqua><underlined>Open it on headdb.net</underlined></aqua> to filter results and copy ready-to-use commands."
     filter: |
       
       <gray>🔎 <bold>Filters</bold>
@@ -113,3 +117,24 @@ command:
   sounds:
     enabled: "<green>HeadDB interface sounds enabled."
     disabled: "<yellow>HeadDB interface sounds disabled. Run the command again to re-enable them."
+
+  submit:
+    link: "<gray>Have a head to share? <aqua><underlined>Submit it on headdb.net</underlined></aqua> for review."
+
+  sync:
+    start: "<gray>Synchronizing the HeadDB catalog..."
+    success: "<green>Catalog synchronized successfully. <gray>{amount} heads are available."
+    failed: "<red>Catalog synchronization failed: <yellow>{error}"
+
+  reload:
+    success: "<green>Reloaded messages, sounds, menus, prices, website links, and local categories. <yellow>Database endpoints, player-storage backend, worker counts, and task intervals still require a restart."
+
+  inspect:
+    notHead: "<red>Hold a HeadDB catalog head or provide an ID, name, or texture."
+    notFound: "<red>That head is not in the current catalog."
+    consoleUsage: "<red>Console usage: /hdb inspect <id|name|texture>"
+
+  language:
+    available: "<gray>Available HeadDB languages: <aqua>{languages}"
+    invalid: "<red>Unknown language: <yellow>{language}"
+    changed: "<green>Your HeadDB language is now <aqua>{language}<green>."

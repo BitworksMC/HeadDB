@@ -7,8 +7,8 @@ import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.menu.FavoritesHeadsMenu;
 import com.bitworksmc.headdb.core.util.Compatibility;
 import com.bitworksmc.headdb.core.util.Utils;
+import com.bitworksmc.headdb.core.util.WebsiteLinks;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -21,11 +21,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FavoritesHeadsGUI extends SafePaginatedGUI {
-    private static final String DISCORD_URL = "https://discord.gg/j8BAsz8Ac7";
-
     public FavoritesHeadsGUI(HeadDB plugin, String key, Component title, List<Head> heads, List<ItemStack> items) {
         super(new NamespacedKey(plugin, Utils.normalizeNamespacedKey("gui_" + key)));
 
+        String submissionUrl = WebsiteLinks.submissionUrl(plugin.getCfg().getWebsiteUrl());
         int pageSize = plugin.getCfg().getHeadsMenuRows() * 9;
         for (PageRange range : calculatePageRanges(heads.size(), items.size(), pageSize)) {
             List<Head> headsChunk = heads.subList(range.headFrom(), range.headTo());
@@ -58,11 +57,11 @@ public class FavoritesHeadsGUI extends SafePaginatedGUI {
                         Component.text("📥 Submit your favorite or original heads")
                                 .decoration(TextDecoration.ITALIC, false)
                                 .color(NamedTextColor.YELLOW),
-                        Component.text("✨ Directly through our community Discord!")
+                        Component.text("✨ Send it through headdb.net for review!")
                                 .decoration(TextDecoration.ITALIC, false)
                                 .color(NamedTextColor.YELLOW),
                         Component.text(""),
-                        Component.text("🔗 Discord > " + DISCORD_URL)
+                        Component.text("🔗 Submit > " + submissionUrl)
                                 .decoration(TextDecoration.ITALIC, false)
                                 .color(NamedTextColor.YELLOW)
                 };
@@ -84,10 +83,13 @@ public class FavoritesHeadsGUI extends SafePaginatedGUI {
                 page.setButton(53, new SimpleButton(infoItem, ctx -> {
                     Compatibility.sendMessage(
                             ctx.event().getWhoClicked(),
-                            Component.text("Click to join: " + DISCORD_URL)
-                                    .color(NamedTextColor.AQUA)
-                                    .clickEvent(ClickEvent.openUrl(DISCORD_URL))
-                                    .decoration(TextDecoration.UNDERLINED, true)
+                            WebsiteLinks.makeClickable(
+                                    Component.text("Click to submit a head: " + submissionUrl)
+                                            .color(NamedTextColor.AQUA)
+                                            .decoration(TextDecoration.UNDERLINED, true),
+                                    submissionUrl,
+                                    Component.text("Open " + submissionUrl, NamedTextColor.AQUA)
+                            )
                     );
                 }));
             }

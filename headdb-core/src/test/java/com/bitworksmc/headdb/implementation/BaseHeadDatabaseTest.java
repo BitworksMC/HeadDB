@@ -6,11 +6,14 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -24,6 +27,9 @@ import java.util.zip.GZIPOutputStream;
 import static org.junit.jupiter.api.Assertions.*;
 
 class BaseHeadDatabaseTest {
+
+    @TempDir
+    Path tempDirectory;
 
     private static final String HEADS_JSON = """
             [
@@ -146,6 +152,76 @@ class BaseHeadDatabaseTest {
         assertThrows(UnsupportedOperationException.class, () -> heads.getFirst().getTags().add("changed"));
         assertThrows(UnsupportedOperationException.class, () -> database.getByCategory("Plants").clear());
         assertThrows(UnsupportedOperationException.class, () -> database.getByTags("Fruit").clear());
+    }
+
+    @Test
+    void appliesRevisionChangesAndRestoresTheSavedCatalog() {
+        AtomicInteger snapshotRequests = new AtomicInteger();
+        server.createContext("/snapshot", exchange -> {
+            snapshotRequests.incrementAndGet();
+            exchange.getResponseHeaders().set("X-Catalog-Schema", "1");
+            exchange.getResponseHeaders().set("X-Catalog-Revision", "1");
+            respond(exchange, 200, HEADS_JSON);
+        });
+        server.createContext("/changes", exchange -> {
+            String query = exchange.getRequestURI().getQuery();
+            if (query != null && query.contains("sinceRevision=1")) {
+                respond(exchange, 200, """
+                        {
+                          "schema":1,
+                          "fromRevision":1,
+                          "toRevision":2,
+                          "changes":[
+                            {"revision":2,"operation":"remove","headId":1},
+                            {"revision":2,"operation":"upsert","headId":3,"head":{
+                              "id":3,
+                              "name":"Uploaded head",
+                              "texture":"texture-three",
+                              "textureUrl":"https://headdb.net/api/v1/textures/texture-three",
+                              "category":"Decoration",
+                              "tags":["Uploaded"]
+                            }}
+                          ],
+                          "hasMore":false,
+                          "nextCursor":null
+                        }
+                        """);
+                return;
+            }
+            respond(exchange, 200, """
+                    {"schema":1,"fromRevision":2,"toRevision":2,"changes":[],"hasMore":false,"nextCursor":null}
+                    """);
+        });
+
+        Path cache = tempDirectory.resolve("catalog-cache.json");
+        BaseHeadDatabase database = new BaseHeadDatabase(
+                databaseExecutor,
+                List.of(url("/snapshot")),
+                url("/changes"),
+                cache,
+                Index.ID
+        );
+        assertEquals(2, database.update().join().size());
+        List<Head> synced = database.update().join();
+
+        assertEquals(2, synced.size());
+        assertNull(database.getById(1));
+        assertEquals("Bread", database.getById(2).getName());
+        assertEquals("https://headdb.net/api/v1/textures/texture-three", database.getById(3).getTextureUrl());
+        assertEquals(2, database.getCatalogRevision());
+        assertTrue(Files.isRegularFile(cache));
+
+        BaseHeadDatabase restored = new BaseHeadDatabase(
+                databaseExecutor,
+                List.of(url("/snapshot")),
+                url("/changes"),
+                cache,
+                Index.ID
+        );
+        assertEquals(2, restored.update().join().size());
+        assertEquals(2, restored.getCatalogRevision());
+        assertNotNull(restored.getById(3));
+        assertEquals(1, snapshotRequests.get());
     }
 
     private BaseHeadDatabase database(String path, Index... indexes) {

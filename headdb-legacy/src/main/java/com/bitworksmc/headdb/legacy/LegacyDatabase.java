@@ -1,6 +1,9 @@
 package com.bitworksmc.headdb.legacy;
 
 import com.bitworksmc.headdb.api.HeadDatabase;
+import com.bitworksmc.headdb.api.catalog.CatalogStatus;
+import com.bitworksmc.headdb.api.catalog.CatalogUpdate;
+import com.bitworksmc.headdb.api.catalog.CatalogUpdateListener;
 import com.bitworksmc.headdb.api.model.Head;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -24,6 +27,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 final class LegacyDatabase implements HeadDatabase {
     private static final java.lang.reflect.Type HEAD_LIST =
@@ -34,6 +38,12 @@ final class LegacyDatabase implements HeadDatabase {
     private final Object updateLock = new Object();
     private volatile Snapshot snapshot;
     private volatile CompletableFuture<List<Head>> updateFuture;
+    private volatile long lastAttemptEpochMillis;
+    private volatile long lastSuccessfulUpdateEpochMillis;
+    private volatile String lastError;
+    private volatile String activeSource;
+    private final CopyOnWriteArrayList<CatalogUpdateListener> updateListeners =
+            new CopyOnWriteArrayList<CatalogUpdateListener>();
 
     LegacyDatabase(String sourceUrl, Executor executor) {
         this(Collections.singletonList(sourceUrl), executor);
@@ -56,7 +66,19 @@ final class LegacyDatabase implements HeadDatabase {
             if (updateFuture != null && !updateFuture.isDone()) {
                 return updateFuture;
             }
-            updateFuture = CompletableFuture.supplyAsync(() -> load(), executor);
+            final Snapshot previous = snapshot;
+            lastAttemptEpochMillis = System.currentTimeMillis();
+            updateFuture = CompletableFuture.supplyAsync(() -> load(), executor)
+                    .whenComplete((heads, failure) -> {
+                        if (failure != null) {
+                            lastError = rootMessage(failure);
+                            return;
+                        }
+                        lastError = null;
+                        lastSuccessfulUpdateEpochMillis = System.currentTimeMillis();
+                        CatalogUpdate update = describeUpdate(previous, snapshot);
+                        if (update.hasChanges()) notifyListeners(update);
+                    });
             return updateFuture;
         }
     }
@@ -100,6 +122,7 @@ final class LegacyDatabase implements HeadDatabase {
 
             Snapshot next = Snapshot.create(loaded);
             snapshot = next;
+            activeSource = sourceUrl;
             return next.heads;
         } catch (IOException | RuntimeException exception) {
             throw new CompletionException("Failed to update HeadDB from " + sourceUrl, exception);
@@ -184,6 +207,62 @@ final class LegacyDatabase implements HeadDatabase {
     public Head getByTexture(String texture) {
         Snapshot current = snapshot;
         return current == null || texture == null ? null : current.byTexture.get(texture);
+    }
+
+    @Override
+    public CatalogStatus getCatalogStatus() {
+        Snapshot current = snapshot;
+        return new CatalogStatus(current != null, -1, current == null ? 0 : current.heads.size(),
+                lastAttemptEpochMillis, lastSuccessfulUpdateEpochMillis, lastError, activeSource);
+    }
+
+    @Override
+    public AutoCloseable addCatalogUpdateListener(final CatalogUpdateListener listener) {
+        if (listener == null) throw new NullPointerException("listener");
+        updateListeners.add(listener);
+        return new AutoCloseable() {
+            @Override public void close() { updateListeners.remove(listener); }
+        };
+    }
+
+    private CatalogUpdate describeUpdate(Snapshot before, Snapshot after) {
+        Map<Integer, Head> previous = before == null
+                ? Collections.<Integer, Head>emptyMap() : before.byId;
+        Map<Integer, Head> current = after == null
+                ? Collections.<Integer, Head>emptyMap() : after.byId;
+        List<Integer> added = new ArrayList<Integer>();
+        List<Integer> updated = new ArrayList<Integer>();
+        List<Integer> removed = new ArrayList<Integer>();
+        for (Map.Entry<Integer, Head> entry : current.entrySet()) {
+            Head old = previous.get(entry.getKey());
+            if (old == null) added.add(entry.getKey());
+            else if (!sameHead(old, entry.getValue())) updated.add(entry.getKey());
+        }
+        for (Integer id : previous.keySet()) if (!current.containsKey(id)) removed.add(id);
+        Collections.sort(added); Collections.sort(updated); Collections.sort(removed);
+        return new CatalogUpdate(-1, -1, added, updated, removed, System.currentTimeMillis());
+    }
+
+    private void notifyListeners(CatalogUpdate update) {
+        for (CatalogUpdateListener listener : updateListeners) {
+            try { listener.onCatalogUpdate(update); }
+            catch (RuntimeException ignored) { }
+        }
+    }
+
+    private static boolean sameHead(Head left, Head right) {
+        return left.getId() == right.getId()
+                && java.util.Objects.equals(left.getName(), right.getName())
+                && java.util.Objects.equals(left.getTexture(), right.getTexture())
+                && java.util.Objects.equals(left.getTextureUrl(), right.getTextureUrl())
+                && java.util.Objects.equals(left.getCategory(), right.getCategory())
+                && java.util.Objects.equals(left.getTags(), right.getTags());
+    }
+
+    private static String rootMessage(Throwable failure) {
+        Throwable current = failure;
+        while (current.getCause() != null) current = current.getCause();
+        return current.getMessage() == null ? current.getClass().getSimpleName() : current.getMessage();
     }
 
     private static List<Head> immutableList(Collection<? extends Head> source) {

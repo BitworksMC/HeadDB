@@ -12,14 +12,22 @@ public class BaseHead implements Head {
     private final int id;
     private final String name;
     private final String texture;
+    private final String textureUrl;
     private final String category;
     private final List<String> tags;
     private volatile ItemStack item;
 
     public BaseHead(int id, String name, String texture, String category, List<String> tags) {
+        this(id, name, texture, null, category, tags);
+    }
+
+    public BaseHead(int id, String name, String texture, String textureUrl, String category, List<String> tags) {
         this.id = id;
         this.name = Objects.requireNonNull(name, "name");
         this.texture = Objects.requireNonNull(texture, "texture");
+        this.textureUrl = textureUrl == null || textureUrl.isBlank()
+                ? "https://textures.minecraft.net/texture/" + texture
+                : textureUrl;
         this.category = Objects.requireNonNull(category, "category");
         this.tags = List.copyOf(Objects.requireNonNull(tags, "tags"));
     }
@@ -52,6 +60,11 @@ public class BaseHead implements Head {
     @Override
     public String getTexture() {
         return this.texture;
+    }
+
+    @Override
+    public String getTextureUrl() {
+        return this.textureUrl;
     }
 
     @Override

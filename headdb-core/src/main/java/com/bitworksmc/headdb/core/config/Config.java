@@ -3,6 +3,7 @@ package com.bitworksmc.headdb.core.config;
 import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.util.Compatibility;
+import com.bitworksmc.headdb.core.util.WebsiteLinks;
 import com.bitworksmc.headdb.implementation.Index;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -24,7 +25,9 @@ public class Config {
     private static final Logger LOGGER = LoggerFactory.getLogger(Config.class);
 
     // === Default Head Textures ===
-    private static final String DEFAULT_DATABASE_SOURCE_URL = "https://raw.githubusercontent.com/BitworksMC/HeadDB/refs/heads/master/heads.json";
+    private static final String DEFAULT_DATABASE_SOURCE_URL = "https://headdb.net/api/v1/catalog/snapshot";
+    private static final String DEFAULT_DATABASE_SYNC_URL = "https://headdb.net/api/v1/catalog/changes";
+    private static final String LEGACY_DATABASE_SOURCE_URL = "https://headdb.net/api/v1/legacy/heads.json";
     private static final String DEFAULT_BACK_TEXTURE = "e5da4847272582265bdaca367237c96122b139f4e597fbc6667d3fb75fea7cf6";
     private static final String DEFAULT_INFO_TEXTURE = "93e5cb83cfdf42e9c4d8a3ecb4f889f6a5f418dce0a894c97e416a0eaf0d58";
     private static final String DEFAULT_NEXT_TEXTURE = "62bfb7ed2bd9f1d1f85c3d6ffb1626f252c5ecfd79d51a3f56ebf8e0c3c91";
@@ -37,13 +40,18 @@ public class Config {
 
     // General
     private long playerStorageSaveInterval;
+    private String playerStorageBackend, playerStorageJdbcUrl, playerStorageUsername, playerStoragePassword;
     private int databaseThreads, apiThreads;
+    private long databaseSyncIntervalMinutes;
     private boolean preloadHeads, trackPage, updaterEnabled;
     private boolean updateCheckerEnabled, updateCheckerNotifyConsole, updateCheckerNotifyPlayers;
     private long updateCheckerIntervalHours;
     private int maxBuyAmount;
     private List<Integer> omit;
     private List<String> databaseSourceUrls = List.of(DEFAULT_DATABASE_SOURCE_URL);
+    private String databaseSyncUrl = DEFAULT_DATABASE_SYNC_URL;
+    private String websiteUrl = WebsiteLinks.DEFAULT_BASE_URL;
+    private boolean websiteSearchHintEnabled;
 
     // Indexing
     private boolean indexingEnabled, indexById, indexByTexture, indexByCategory, indexByTag;
@@ -81,6 +89,18 @@ public class Config {
 
     private void loadGeneral() {
         playerStorageSaveInterval = positiveLong("storage.player.saveInterval", 1800L);
+        playerStorageBackend = config.getString("storage.player.backend", "SQLITE").trim().toUpperCase(Locale.ROOT);
+        if (!playerStorageBackend.equals("SQLITE") && !playerStorageBackend.equals("MYSQL")) {
+            LOGGER.warn("Unknown storage.player.backend '{}'; using SQLITE", playerStorageBackend);
+            playerStorageBackend = "SQLITE";
+        }
+        playerStorageJdbcUrl = config.getString("storage.player.mysql.url", "jdbc:mysql://127.0.0.1:3306/headdb").trim();
+        playerStorageUsername = config.getString("storage.player.mysql.username", "headdb");
+        playerStoragePassword = config.getString("storage.player.mysql.password", "");
+        if (playerStorageBackend.equals("MYSQL") && !playerStorageJdbcUrl.startsWith("jdbc:mysql:")) {
+            LOGGER.warn("storage.player.mysql.url must begin with 'jdbc:mysql:'; using SQLITE player storage");
+            playerStorageBackend = "SQLITE";
+        }
         updaterEnabled = config.getBoolean("updater", true);
         updateCheckerEnabled = config.getBoolean("updateChecker.enabled", true);
         updateCheckerNotifyConsole = config.getBoolean("updateChecker.notifyConsole", true);
@@ -90,6 +110,13 @@ public class Config {
         preloadHeads = config.getBoolean("preloadHeads", false);
         databaseThreads = positiveInt("database.threads", 1);
         apiThreads = positiveInt("database.apiThreads", 1);
+        databaseSyncIntervalMinutes = positiveLong("database.syncIntervalMinutes", 15L);
+        websiteUrl = WebsiteLinks.normalizeBaseUrl(config.getString("website.url", WebsiteLinks.DEFAULT_BASE_URL));
+        websiteSearchHintEnabled = config.getBoolean("website.searchHint.enabled", true);
+        databaseSyncUrl = Optional.ofNullable(config.getString("database.syncUrl", DEFAULT_DATABASE_SYNC_URL))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .orElse(null);
         maxBuyAmount = positiveInt("maxBuyAmount", 2304);
         omit = config.getIntegerList("head.omit");
         loadDatabaseSources();
@@ -106,11 +133,18 @@ public class Config {
         LOGGER.trace(" - databaseThreads = {}", databaseThreads);
         LOGGER.trace(" - apiThreads = {}", apiThreads);
         LOGGER.trace(" - databaseSourceUrls = {}", databaseSourceUrls);
+        LOGGER.trace(" - databaseSyncUrl = {}", databaseSyncUrl);
+        LOGGER.trace(" - databaseSyncIntervalMinutes = {}", databaseSyncIntervalMinutes);
+        LOGGER.trace(" - websiteUrl = {}", websiteUrl);
+        LOGGER.trace(" - websiteSearchHintEnabled = {}", websiteSearchHintEnabled);
         LOGGER.trace(" - maxBuyAmount = {}", maxBuyAmount);
     }
 
     private void loadDatabaseSources() {
         String primarySource = config.getString("database.sourceUrl", DEFAULT_DATABASE_SOURCE_URL);
+        if (LEGACY_DATABASE_SOURCE_URL.equals(primarySource)) {
+            primarySource = DEFAULT_DATABASE_SOURCE_URL;
+        }
         List<String> fallbackSources = config.getStringList("database.fallbackSourceUrls");
 
         LinkedHashSet<String> orderedSources = new LinkedHashSet<>();
@@ -120,6 +154,10 @@ public class Config {
             if (!trimmed.isEmpty()) {
                 orderedSources.add(trimmed);
             }
+        }
+
+        if (DEFAULT_DATABASE_SOURCE_URL.equals(primarySource)) {
+            orderedSources.add(LEGACY_DATABASE_SOURCE_URL);
         }
 
         for (String source : fallbackSources) {
@@ -431,6 +469,10 @@ public class Config {
     // === Getters ===
 
     public long getPlayerStorageSaveInterval() { return playerStorageSaveInterval; }
+    public String getPlayerStorageBackend() { return playerStorageBackend; }
+    public String getPlayerStorageJdbcUrl() { return playerStorageJdbcUrl; }
+    public String getPlayerStorageUsername() { return playerStorageUsername; }
+    public String getPlayerStoragePassword() { return playerStoragePassword; }
     public boolean isShowInfoItem() { return showInfoItem; }
     public boolean isHeadsMenuDividerEnabled() { return headsMenuDividerEnabled; }
     public int getHeadsMenuRows() { return headsMenuRows; }
@@ -448,6 +490,10 @@ public class Config {
     public int getDatabaseThreads() { return databaseThreads; }
     public int getApiThreads() { return apiThreads; }
     public List<String> getDatabaseSourceUrls() { return databaseSourceUrls; }
+    public @Nullable String getDatabaseSyncUrl() { return databaseSyncUrl; }
+    public long getDatabaseSyncIntervalMinutes() { return databaseSyncIntervalMinutes; }
+    public String getWebsiteUrl() { return websiteUrl; }
+    public boolean isWebsiteSearchHintEnabled() { return websiteSearchHintEnabled; }
     public int getMaxBuyAmount() { return maxBuyAmount; }
     public List<Integer> getOmit() { return omit; }
 

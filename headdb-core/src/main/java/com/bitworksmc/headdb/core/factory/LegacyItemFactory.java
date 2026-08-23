@@ -40,7 +40,7 @@ public class LegacyItemFactory implements ItemFactory {
 
         try {
             PlayerTextures textures = profile.getTextures();
-            textures.setSkin(URI.create("https://textures.minecraft.net/texture/" + head.getTexture()).toURL());
+            textures.setSkin(URI.create(head.getTextureUrl()).toURL());
             profile.setTextures(textures);
         } catch (IllegalArgumentException | MalformedURLException ex) {
             LOGGER.error("Failed to set texture for {} (ID:{} | Texture: {})", head.getName(), head.getId(), head.getTexture(), ex);

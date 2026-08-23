@@ -30,17 +30,35 @@
   The database loads on a background thread.  
 - **Flexible Querying**  
   Search by name, ID, category, or tags.
+  Structured queries also support multiple IDs and all/any matching.
+- **Operational controls**
+  Inspect catalog health, synchronize immediately, reload runtime settings,
+  inspect held heads, and browse recently assigned IDs.
+- **Network-ready player storage**
+  Keep player settings in local SQLite or share favorites, language, and sound
+  preferences through MySQL.
+- **Paper and Folia menus**
+  Modern inventories are isolated per open and their registries are safe across
+  region threads. The legacy jar continues to support pre-1.21 Bukkit servers.
+- **Website handoff**
+  `/hdb submit` opens the public submission form, and in-game searches can link
+  directly to the equivalent browser search for richer filtering and copyable commands.
+
+Browse the catalog, submit heads, and read the plugin and HTTP API documentation at
+[headdb.net](https://headdb.net). The modern plugin restores its saved catalog,
+then polls the managed revision feed for additions, edits, and removals. A complete
+snapshot and the legacy BitworksMC GitHub catalog remain available for recovery.
 
 ---
 
 ## 🚀 Download & Installation
 
-HeadDB 6.0.3 is distributed as two server-specific jars. Install exactly one:
+HeadDB 6.1.0 is distributed as two server-specific jars. Install exactly one:
 
 | File | Server versions | Java | Purpose |
 |---|---|---|---|
-| `HeadDB-6.0.3.jar` | Paper 1.21.0 and newer | Java 21+ | The full modern plugin and the recommended download. |
-| `HeadDB-6.0.3-legacy.jar` | Bukkit-compatible 1.8.8-1.20.6 | Java 8 bytecode* | The isolated implementation for servers before 1.21. |
+| `HeadDB-6.1.0.jar` | Paper/Folia 1.21.0 and newer | Java 21+ | The full modern plugin and the recommended download. |
+| `HeadDB-6.1.0-legacy.jar` | Bukkit-compatible 1.8.8-1.20.6 | Java 8 bytecode* | The isolated implementation for servers before 1.21. |
 
 \* Use the Java version required by the Minecraft server. The legacy plugin
 itself is Java 8-compatible, but later Minecraft releases require newer Java
@@ -58,8 +76,8 @@ heads, custom-category, purchase, player-storage, API, localization, sound,
 update-checking, metrics, and database-refresh features. Its menus are implemented
 with Bukkit inventories so they work before Paper's modern menu APIs. Purchase
 amounts use inventory presets, and advanced MiniMessage effects are simplified
-on older clients. Folia is not currently supported because the bundled modern
-menu framework is not region-thread safe.
+on older clients. The modern jar declares Folia support and avoids sharing menu
+inventories between opens; page and navigation registries use concurrent state.
 
 HeadDB checks GitHub Releases for updates on startup and every 24 hours by
 default. Console notifications and player notifications can be configured under
@@ -88,6 +106,13 @@ Choose your preferred source:
 | `headdb.command.give` | Give a database head by command. |
 | `headdb.command.info` | View HeadDB and server version information. |
 | `headdb.command.sounds` | Toggle personal HeadDB interface sounds with `/hdb sounds`. |
+| `headdb.command.submit` | Show the clickable headdb.net submission link with `/hdb submit`. |
+| `headdb.command.status` | Show catalog source, revision, size, and last synchronization result. |
+| `headdb.command.sync` | Run a managed-catalog synchronization immediately. |
+| `headdb.command.reload` | Reload runtime messages, menus, prices, links, sounds, and categories. |
+| `headdb.command.inspect` | Inspect a held or identified head and open its website record. |
+| `headdb.command.recent` | Browse the catalog entries with the newest IDs. |
+| `headdb.command.language` | Select a personal message language, such as `en` or `es`. |
 | `headdb.update.notify` | Receive a notification with the latest-release download link. |
 | `headdb.category.*` | Access every category. |
 | `headdb.category.<category_id>` | Access one database or custom category. |
@@ -105,6 +130,21 @@ To grant every category except local heads, grant `headdb.category.*` and explic
 
 Database category IDs are their lowercase names with spaces and symbols replaced by underscores. For example, `Food & Drinks` uses `headdb.category.food_drinks`. Custom categories use the identifier from `categories.yml` (normalized the same way).
 
+Common command forms include `/hdb give id:123`, `/hdb give 16 id:123`, and
+the administrator form `/hdb give <player> <amount> <head>`. Structured search
+accepts quoted filters, multiple `id:` values, and `--any`, for example:
+
+```text
+/hdb search category:"Food & Drinks" tag:dessert id:123 id:456 --any
+```
+
+Set `storage.player.backend` to `MYSQL` on every proxy-network server and use the
+same JDBC credentials to share player preferences. Changing the storage backend,
+database endpoints, worker counts, or scheduled intervals requires a restart;
+other settings can be applied with `/hdb reload`.
+An empty MySQL table is seeded once from an existing local SQLite player
+database, so retain the local file until the first successful migration.
+
 ---
 
 ## 🐞 Reporting Issues
@@ -116,6 +156,23 @@ Found a bug or have a feature request? Open an issue:
 ---
 
 ## 🤝 Using the API
+
+HeadDB 6.1.0 uses two APIs for different purposes:
+
+- The **HeadDB HTTP API** at `https://headdb.net/api/v1` is the managed source
+  for published head data. The modern plugin downloads
+  `/catalog/snapshot` when it needs a complete database and polls
+  `/catalog/changes` with its saved revision for additions, edits, and removals.
+  Server owners normally do not need to call these endpoints themselves. The
+  HTTP API documentation is available at
+  [headdb.net/docs/api](https://headdb.net/docs/api).
+- The **Bukkit Java API** described below is registered by the installed HeadDB
+  plugin. Other plugins use it to search the locally synchronized catalog and
+  create head items without making their own HTTP requests.
+
+The Java API remains the normal integration point for another Minecraft
+plugin. The new HTTP API changes where HeadDB obtains and synchronizes its data;
+it does not remove or replace the Bukkit service.
 
 ### 1. Adding the Dependency
 
@@ -236,6 +293,9 @@ Legacy compatibility: `com.github.thesilentpro.headdb.api.*` remains available a
 | `computeLocalHeads()`                     | Generate `ItemStack`s for all players known to the server.       |
 | `computeLocalHead(UUID uniqueId)`         | Generate an `ItemStack` for a specific player UUID.              |
 | `List<String> findKnownCategories()`      | List all category names.                                         |
+| `CatalogStatus getCatalogStatus()`        | Read source, revision, size, and last synchronization health.     |
+| `search(SearchQuery query)`               | Structured, sorted, paginated local catalog search.               |
+| `addCatalogUpdateListener(listener)`      | Observe added, edited, and removed catalog IDs.                   |
 | `ExecutorService getExecutor()`           | Access the internal executor for advanced workflows.             |
 
 ---
@@ -271,8 +331,8 @@ you agree to the [Minecraft EULA](https://aka.ms/MinecraftEULA).
 Run `mvn clean package` from the repository root. The release files are written
 to:
 
-- `headdb-core/target/HeadDB-6.0.3.jar`
-- `headdb-legacy/target/HeadDB-6.0.3-legacy.jar`
+- `headdb-core/target/HeadDB-6.1.0.jar`
+- `headdb-legacy/target/HeadDB-6.1.0-legacy.jar`
 
 The legacy module uses `--release 8`; the modern module uses `--release 21`.
 Maven may run on a newer JDK when building both artifacts together.

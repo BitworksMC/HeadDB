@@ -19,7 +19,15 @@ public class HeadMapper implements JsonDeserializer<Head>, JsonSerializer<Head> 
         for (JsonElement tagEntry : main.get("tags").getAsJsonArray()) {
             tags.add(tagEntry.getAsString());
         }
-        return new BaseHead(main.get("id").getAsInt(), main.get("name").getAsString(), main.get("texture").getAsString(), main.get("category").getAsString(), tags);
+        JsonElement textureUrl = main.get("textureUrl");
+        return new BaseHead(
+                main.get("id").getAsInt(),
+                main.get("name").getAsString(),
+                main.get("texture").getAsString(),
+                textureUrl == null || textureUrl.isJsonNull() ? null : textureUrl.getAsString(),
+                main.get("category").getAsString(),
+                tags
+        );
     }
 
     @Override
@@ -29,6 +37,7 @@ public class HeadMapper implements JsonDeserializer<Head>, JsonSerializer<Head> 
         json.addProperty("id", src.getId());
         json.addProperty("name", src.getName());
         json.addProperty("texture", src.getTexture());
+        json.addProperty("textureUrl", src.getTextureUrl());
         json.addProperty("category", src.getCategory());
 
         JsonArray tagsArray = new JsonArray();

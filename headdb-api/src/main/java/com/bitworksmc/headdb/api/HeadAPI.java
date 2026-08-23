@@ -1,6 +1,10 @@
 package com.bitworksmc.headdb.api;
 
 import com.bitworksmc.headdb.api.model.Head;
+import com.bitworksmc.headdb.api.catalog.CatalogStatus;
+import com.bitworksmc.headdb.api.catalog.CatalogUpdateListener;
+import com.bitworksmc.headdb.api.search.SearchPage;
+import com.bitworksmc.headdb.api.search.SearchQuery;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
@@ -69,6 +73,15 @@ public interface HeadAPI {
 
     @NotNull
     List<String> findKnownCategories();
+
+    /** Returns synchronization health and revision information without blocking. */
+    @NotNull CatalogStatus getCatalogStatus();
+
+    /** Runs a structured, paginated query against the locally loaded catalog. */
+    @NotNull CompletableFuture<SearchPage> search(@NotNull SearchQuery query);
+
+    /** Registers a listener and returns a handle that removes it when closed. */
+    @NotNull AutoCloseable addCatalogUpdateListener(@NotNull CatalogUpdateListener listener);
 
     /**
      * Returns the underlying executor service.

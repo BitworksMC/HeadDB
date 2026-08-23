@@ -1,9 +1,7 @@
 package com.bitworksmc.headdb.core;
 
 import com.github.thesilentpro.grim.listener.PageListeners;
-import com.github.thesilentpro.grim.page.registry.PageRegistry;
 import com.bitworksmc.headdb.api.HeadAPI;
-import com.bitworksmc.headdb.api.HeadDatabase;
 import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.core.api.LegacyHeadAPIAdapter;
 import com.bitworksmc.headdb.core.command.HDBMainCommand;
@@ -15,6 +13,7 @@ import com.bitworksmc.headdb.core.economy.EconomyProvider;
 import com.bitworksmc.headdb.core.economy.VaultEconomyProvider;
 import com.bitworksmc.headdb.core.factory.ItemFactoryRegistry;
 import com.bitworksmc.headdb.core.menu.MenuManager;
+import com.bitworksmc.headdb.core.menu.registry.ConcurrentPageRegistry;
 import com.bitworksmc.headdb.core.storage.PlayerStorage;
 import com.bitworksmc.headdb.core.update.UpdateChecker;
 import com.bitworksmc.headdb.core.util.Compatibility;
@@ -34,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CompletableFuture;
 
 public class HeadDB extends JavaPlugin {
 
@@ -42,7 +42,7 @@ public class HeadDB extends JavaPlugin {
     private static final int PRELOAD_BATCH_SIZE = 250;
 
     private ConfigManager configManager;
-    private HeadDatabase headDatabase;
+    private BaseHeadDatabase headDatabase;
     private HeadAPI headApi;
     private ExecutorService databaseExecutor;
     private HDBSubCommandManager subCommandManager;
@@ -65,36 +65,22 @@ public class HeadDB extends JavaPlugin {
         this.localization.init();
 
         Config config = this.configManager.getConfig();
-        String econProvider = config.getEconomyProvider();
-        if (econProvider != null) {
-            if (econProvider.equalsIgnoreCase("NONE") || econProvider.isEmpty()) {
-                LOGGER.debug("Economy is disabled.");
-            } else if (config.getEconomyProvider().equalsIgnoreCase("VAULT")) {
-                VaultEconomyProvider vaultProvider = new VaultEconomyProvider(getName());
-                if (vaultProvider.init()) {
-                    this.economyProvider = vaultProvider;
-                    LOGGER.debug("Economy Provider: Vault");
-                } else {
-                    LOGGER.warn("Vault economy was enabled but no compatible provider was found. Economy features are disabled.");
-                }
-            } else {
-                LOGGER.warn("Unknown economy provider in the config.yml!");
-            }
-        }
-
+        configureEconomy(config);
         // Init database
         int databaseThreads = config.getDatabaseThreads();
         this.databaseExecutor = Utils.executorService(databaseThreads, "Head Database Worker");
         this.headDatabase = new BaseHeadDatabase(
                 databaseExecutor,
                 config.getDatabaseSourceUrls(),
+                config.getDatabaseSyncUrl(),
+                getDataFolder().toPath().resolve("catalog-cache.json"),
                 config.resolveEnabledIndexes()
         );
         this.headDatabase.update().thenAcceptAsync(heads -> handleDatabaseUpdate(config, heads), Compatibility.getMainThreadExecutor(this));
         this.headApi = new BaseHeadAPI(config.getApiThreads(), headDatabase);
         this.menuManager = new MenuManager(this);
         this.headDatabase.onReady().thenAcceptAsync(heads -> this.menuManager.registerDefaults(this, heads), Compatibility.getMainThreadExecutor(this));
-        this.playerStorage = new PlayerStorage(getDataFolder());
+        this.playerStorage = new PlayerStorage(getDataFolder(), config);
         this.playerStorage.load();
         Compatibility.runAsyncRepeating(this, this.playerStorage::save, config.getPlayerStorageSaveInterval() * 20L, config.getPlayerStorageSaveInterval() * 20L);
 
@@ -114,7 +100,7 @@ public class HeadDB extends JavaPlugin {
         command.setExecutor(mainCommand);
         command.setTabCompleter(mainCommand);
 
-        new PageListeners().register(this);
+        new PageListeners(ConcurrentPageRegistry.INSTANCE).register(this);
         if (Compatibility.IS_PAPER) {
             new PaperInputListener().register(this);
         }
@@ -131,13 +117,19 @@ public class HeadDB extends JavaPlugin {
 
         // Start updater task
         if (config.isUpdaterEnabled()) {
-            Compatibility.runAsyncRepeating(this, () ->
+            long syncIntervalTicks = config.getDatabaseSyncIntervalMinutes() * 60L * 20L;
+            Compatibility.runAsyncRepeating(this, () -> {
+                    int previousRevision = this.headDatabase.getCatalogRevision();
                     this.headDatabase.update().thenAcceptAsync(heads -> {
-                        handleDatabaseUpdate(config, heads);
-                        this.menuManager.registerDefaults(this, heads);
-                    }, Compatibility.getMainThreadExecutor(this)),
-                    86400L * 20L,
-                    86400L * 20L
+                        int currentRevision = this.headDatabase.getCatalogRevision();
+                        if (currentRevision != previousRevision || currentRevision < 0) {
+                            handleDatabaseUpdate(this.configManager.getConfig(), heads);
+                            this.menuManager.registerDefaults(this, heads);
+                        }
+                    }, Compatibility.getMainThreadExecutor(this));
+                },
+                    syncIntervalTicks,
+                    syncIntervalTicks
             );
         }
 
@@ -169,9 +161,9 @@ public class HeadDB extends JavaPlugin {
         }
         // Closing a view fires InventoryCloseEvent, which removes that view from the
         // registry. Iterate a snapshot so the listener cannot mutate our iterator.
-        for (InventoryView view : new ArrayList<>(PageRegistry.INSTANCE.getPages().keySet())) {
+        for (InventoryView view : new ArrayList<>(ConcurrentPageRegistry.INSTANCE.getPages().keySet())) {
             view.close();
-            PageRegistry.INSTANCE.remove(view);
+            ConcurrentPageRegistry.INSTANCE.remove(view);
         }
         if (this.playerStorage != null) {
             this.playerStorage.save();
@@ -214,6 +206,53 @@ public class HeadDB extends JavaPlugin {
 
     public HeadAPI getHeadApi() {
         return headApi;
+    }
+
+    public BaseHeadDatabase getHeadDatabase() {
+        return headDatabase;
+    }
+
+    /** Forces a catalog synchronization and refreshes every database-backed menu. */
+    public CompletableFuture<List<Head>> synchronizeCatalog() {
+        return this.headDatabase.update().thenApplyAsync(heads -> {
+            handleDatabaseUpdate(this.configManager.getConfig(), heads);
+            this.menuManager.registerDefaults(this, heads);
+            return heads;
+        }, Compatibility.getMainThreadExecutor(this));
+    }
+
+    /** Reloads message, sound, menu, website, price, and category settings safely. */
+    public synchronized void reloadRuntimeConfiguration() {
+        reloadConfig();
+        ConfigManager replacement = new ConfigManager(this);
+        replacement.loadAll(this);
+        this.configManager = replacement;
+        HDBLocalization replacementLocalization = new HDBLocalization(this);
+        replacementLocalization.init();
+        this.localization = replacementLocalization;
+        configureEconomy(replacement.getConfig());
+        List<Head> heads = this.headDatabase.getHeads();
+        if (heads != null) this.menuManager.registerDefaults(this, heads);
+    }
+
+    private void configureEconomy(Config config) {
+        this.economyProvider = null;
+        String econProvider = config.getEconomyProvider();
+        if (econProvider == null || econProvider.equalsIgnoreCase("NONE") || econProvider.isEmpty()) {
+            LOGGER.debug("Economy is disabled.");
+            return;
+        }
+        if (econProvider.equalsIgnoreCase("VAULT")) {
+            VaultEconomyProvider vaultProvider = new VaultEconomyProvider(getName());
+            if (vaultProvider.init()) {
+                this.economyProvider = vaultProvider;
+                LOGGER.debug("Economy Provider: Vault");
+            } else {
+                LOGGER.warn("Vault economy was enabled but no compatible provider was found. Economy features are disabled.");
+            }
+            return;
+        }
+        LOGGER.warn("Unknown economy provider in config.yml: {}", econProvider);
     }
 
     private void handleDatabaseUpdate(Config config, List<Head> heads) {

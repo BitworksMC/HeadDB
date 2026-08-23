@@ -7,7 +7,7 @@
 
     <groupId>com.bitworksmc</groupId>
     <artifactId>HeadDB</artifactId>
-    <version>6.0.3</version>
+    <version>6.1.0</version>
     <packaging>pom</packaging>
 
     <name>HeadDB</name>
@@ -28,6 +28,7 @@
         <paper.version>1.21-R0.1-SNAPSHOT</paper.version>
         <spigot.version>1.8.8-R0.1-SNAPSHOT</spigot.version>
         <sqlite.version>3.53.2.1</sqlite.version>
+        <mysql.version>9.6.0</mysql.version>
     </properties>
 
 </project>

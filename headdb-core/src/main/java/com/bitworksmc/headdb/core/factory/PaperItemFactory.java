@@ -1,16 +1,20 @@
 package com.bitworksmc.headdb.core.factory;
 
-import com.destroystokyo.paper.profile.PlayerProfile;
 import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.core.HeadDB;
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.profile.PlayerTextures;
 import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
@@ -25,9 +29,11 @@ public class PaperItemFactory implements ItemFactory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PaperItemFactory.class);
     private final HeadDB plugin;
+    private final NamespacedKey headIdKey;
 
     public PaperItemFactory(HeadDB plugin) {
         this.plugin = plugin;
+        this.headIdKey = new NamespacedKey(plugin, "head_id");
     }
 
     @Override
@@ -37,9 +43,21 @@ public class PaperItemFactory implements ItemFactory {
         PlayerProfile profile = Bukkit.createProfileExact(UUID.randomUUID(), null);
 
         try {
-            PlayerTextures textures = profile.getTextures();
-            textures.setSkin(URI.create("https://textures.minecraft.net/texture/" + head.getTexture()).toURL());
-            profile.setTextures(textures);
+            URI textureUri = TextureProfileValue.parseTrustedUrl(head.getTextureUrl());
+            if (TextureProfileValue.isMojangUrl(textureUri)) {
+                PlayerTextures textures = profile.getTextures();
+                textures.setSkin(textureUri.toURL());
+                profile.setTextures(textures);
+            } else {
+                // Old catalog caches may still contain a HeadDB-hosted URL. Paper
+                // deliberately rejects those in PlayerTextures, so keep this path
+                // only as a compatibility fallback until the next catalog sync.
+                profile.setProperty(new ProfileProperty(
+                        "textures",
+                        TextureProfileValue.fromUrl(textureUri)
+                ));
+            }
+            meta.setPlayerProfile(profile);
         } catch (IllegalArgumentException | MalformedURLException ex) {
             LOGGER.error("Failed to set texture for {} (ID:{} | Texture: {})", head.getName(), head.getId(), head.getTexture(), ex);
             return item;
@@ -60,8 +78,8 @@ public class PaperItemFactory implements ItemFactory {
                 .replaceText(builder -> builder.matchLiteral("{cost}").replacement(cost)
         ));
         meta.lore(lore);
+        meta.getPersistentDataContainer().set(headIdKey, PersistentDataType.INTEGER, head.getId());
 
-        meta.setPlayerProfile(profile);
         item.setItemMeta(meta);
         return item;
     }
@@ -88,6 +106,25 @@ public class PaperItemFactory implements ItemFactory {
         SkullMeta meta = (SkullMeta) item.getItemMeta();
         PlayerProfile profile = meta.getPlayerProfile();
         return profile != null ? profile.getId() : null;
+    }
+
+    @Override
+    public Integer getHeadIdFromItem(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return null;
+        ItemMeta meta = item.getItemMeta();
+        Integer stored = meta.getPersistentDataContainer().get(headIdKey, PersistentDataType.INTEGER);
+        if (stored != null) return stored;
+        List<Component> lore = meta.lore();
+        if (lore == null) return null;
+        for (Component line : lore) {
+            String text = PlainTextComponentSerializer.plainText().serialize(line).trim();
+            java.util.regex.Matcher match = java.util.regex.Pattern.compile("(?i)^ID\\s*:\\s*(\\d+)$").matcher(text);
+            if (match.find()) {
+                try { return Integer.parseInt(match.group(1)); }
+                catch (NumberFormatException ignored) { return null; }
+            }
+        }
+        return null;
     }
 
     @Override

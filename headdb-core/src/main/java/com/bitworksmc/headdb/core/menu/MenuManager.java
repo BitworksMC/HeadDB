@@ -19,14 +19,14 @@ public class MenuManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MenuManager.class);
     private static final Set<String> RESERVED_CUSTOM_CATEGORY_IDS = Set.of("local", "favorites", "custom");
-    private volatile MainMenu mainMenu;
-    private volatile CustomCategoriesGUI customCategoriesGui;
-    private volatile Map<String, HeadsGUI> guis = Map.of();
+    private final HeadDB plugin;
+    private volatile List<Head> mainHeads = List.of();
+    private volatile List<CustomCategory> customCategories = List.of();
+    private volatile Map<String, MenuDefinition> definitions = Map.of();
     private volatile List<String> categoryNames = List.of();
 
     public MenuManager(HeadDB plugin) {
-        this.mainMenu = new MainMenu(plugin, List.of());
-        this.customCategoriesGui = null;
+        this.plugin = plugin;
     }
 
     public void registerDefaults(HeadDB plugin) {
@@ -45,20 +45,21 @@ public class MenuManager {
             headsByCategory.computeIfAbsent(head.getCategory(), ignored -> new ArrayList<>()).add(head);
         }
 
-        Map<String, HeadsGUI> updatedGuis = new HashMap<>();
+        Map<String, MenuDefinition> updatedDefinitions = new HashMap<>();
         List<String> updatedCategoryNames = new ArrayList<>(headsByCategory.size());
         for (Map.Entry<String, List<Head>> entry : headsByCategory.entrySet()) {
             String knownCategory = entry.getKey();
             try {
-                HeadsGUI gui = new HeadsGUI(
-                        plugin,
-                        knownCategory,
+                Component title =
                         plugin.getLocalization().getConsoleMessage("menu.category." + knownCategory.toLowerCase(Locale.ROOT))
-                                .orElseGet(() -> Component.text("HeadDB » " + knownCategory).color(NamedTextColor.GOLD)),
+                                .orElseGet(() -> Component.text("HeadDB » " + knownCategory).color(NamedTextColor.GOLD));
+                MenuDefinition definition = new MenuDefinition(
+                        knownCategory,
+                        title,
                         entry.getValue(),
                         knownCategory
                 );
-                updatedGuis.put(normalizeKey(knownCategory), gui);
+                updatedDefinitions.put(normalizeKey(knownCategory), definition);
                 updatedCategoryNames.add(knownCategory);
             } catch (Throwable ex) {
                 LOGGER.error("Failed to register known category: {}", knownCategory, ex);
@@ -73,15 +74,14 @@ public class MenuManager {
                 continue;
             }
             String customKey = normalizeKey(category.getIdentifier());
-            if (RESERVED_CUSTOM_CATEGORY_IDS.contains(customKey) || updatedGuis.containsKey(customKey)) {
+            if (RESERVED_CUSTOM_CATEGORY_IDS.contains(customKey) || updatedDefinitions.containsKey(customKey)) {
                 LOGGER.warn("Skipping custom category '{}' because its normalized ID '{}' is reserved or already in use.",
                         category.getIdentifier(), customKey);
                 continue;
             }
             customCategories.add(category);
             updatedCategoryNames.add(category.getIdentifier());
-            updatedGuis.put(customKey, new HeadsGUI(
-                    plugin,
+            updatedDefinitions.put(customKey, new MenuDefinition(
                     "custom_" + category.getIdentifier(),
                     plugin.getLocalization().getConsoleMessage("menu.category." + category.getIdentifier())
                             .orElseGet(() -> MiniMessage.miniMessage().deserialize("<red>HeadDB <gray>» " + category.getName())),
@@ -90,38 +90,34 @@ public class MenuManager {
             ));
         }
 
-        CustomCategoriesGUI updatedCustomCategoriesGui = new CustomCategoriesGUI(
+        // Publish immutable menu models. A fresh inventory tree is constructed
+        // for each open so Folia region threads never share Bukkit inventories.
+        this.definitions = Map.copyOf(updatedDefinitions);
+        this.customCategories = List.copyOf(customCategories);
+        this.mainHeads = List.copyOf(heads);
+        this.categoryNames = List.copyOf(updatedCategoryNames);
+    }
+
+    public HeadsGUI get(String key) {
+        MenuDefinition definition = key == null ? null : definitions.get(normalizeKey(key));
+        if (definition == null) {
+            return null;
+        }
+        return new HeadsGUI(plugin, definition.key(), definition.title(), definition.heads(), definition.permissionCategory());
+    }
+
+    public CustomCategoriesGUI getCustomCategoriesGui() {
+        return new CustomCategoriesGUI(
                 plugin,
                 "custom_categories",
                 plugin.getLocalization().getConsoleMessage("menu.customCategories.name")
                         .orElseGet(() -> Component.text("HeadDB » More Categories").color(NamedTextColor.GOLD)),
                 customCategories
         );
-        MainMenu updatedMainMenu = new MainMenu(plugin, heads);
-
-        // Publish the complete replacement only after every menu was constructed.
-        this.guis = Map.copyOf(updatedGuis);
-        this.customCategoriesGui = updatedCustomCategoriesGui;
-        this.mainMenu = updatedMainMenu;
-        this.categoryNames = List.copyOf(updatedCategoryNames);
-    }
-
-    public synchronized void register(String key, HeadsGUI menu) {
-        Map<String, HeadsGUI> updated = new HashMap<>(this.guis);
-        updated.put(normalizeKey(key), menu);
-        this.guis = Map.copyOf(updated);
-    }
-
-    public HeadsGUI get(String key) {
-        return key == null ? null : this.guis.get(normalizeKey(key));
-    }
-
-    public CustomCategoriesGUI getCustomCategoriesGui() {
-        return customCategoriesGui;
     }
 
     public MainMenu getMainMenu() {
-        return this.mainMenu;
+        return new MainMenu(plugin, mainHeads);
     }
 
     public List<String> getCategoryNames() {
@@ -130,6 +126,12 @@ public class MenuManager {
 
     private static String normalizeKey(String key) {
         return PermissionUtil.normalizeCategory(key);
+    }
+
+    private record MenuDefinition(String key, Component title, List<Head> heads, String permissionCategory) {
+        private MenuDefinition {
+            heads = List.copyOf(heads);
+        }
     }
 
 }

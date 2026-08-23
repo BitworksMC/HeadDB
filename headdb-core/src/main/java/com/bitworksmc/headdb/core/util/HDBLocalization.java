@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
@@ -48,6 +49,9 @@ public class HDBLocalization extends AbstractLocalization<Component, String, UUI
 
     @Override
     public @NotNull Optional<Component> getMessage(@NotNull UUID receiver, @NotNull String key) {
+        if (plugin.getPlayerStorage() != null) {
+            setLanguage(receiver, plugin.getPlayerStorage().getPlayer(receiver).getLanguage());
+        }
         return super.getMessage(receiver, key).map(message -> applyPlaceholders(receiver, message));
     }
 
@@ -162,6 +166,10 @@ public class HDBLocalization extends AbstractLocalization<Component, String, UUI
         } catch (IOException ex) {
             LOGGER.error("Failed to load languages!", ex);
         }
+    }
+
+    public List<String> getAvailableLanguages() {
+        return getLanguages().keySet().stream().sorted().toList();
     }
 
     private Component replaceArguments(Component message, @Nullable String... args) {

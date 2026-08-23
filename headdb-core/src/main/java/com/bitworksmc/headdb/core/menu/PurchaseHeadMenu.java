@@ -7,6 +7,7 @@ import com.github.thesilentpro.grim.page.handler.context.ButtonClickContext;
 import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.factory.ItemFactoryRegistry;
+import com.bitworksmc.headdb.core.menu.registry.ConcurrentPageRegistry;
 import com.bitworksmc.headdb.core.util.Compatibility;
 import com.bitworksmc.headdb.core.util.PermissionUtil;
 import com.github.thesilentpro.inputs.paper.PaperInput;
@@ -33,7 +34,7 @@ public class PurchaseHeadMenu extends SimplePage {
     }
 
     public PurchaseHeadMenu(HeadDB plugin, Player player, Head head, Page parentPage, String permissionCategory) {
-        super(plugin.getLocalization().getMessage(player.getUniqueId(), "menu.purchase.name").orElseGet(() -> Component.text("HeadDB » " + head.getName() + " » Purchase")).replaceText(builder -> builder.matchLiteral("{name}").replacement(head.getName())), 6);
+        super(ConcurrentPageRegistry.INSTANCE, plugin.getLocalization().getMessage(player.getUniqueId(), "menu.purchase.name").orElseGet(() -> Component.text("HeadDB » " + head.getName() + " » Purchase")).replaceText(builder -> builder.matchLiteral("{name}").replacement(head.getName())), 6);
         this.plugin = plugin;
         this.head = head;
         this.permissionCategory = permissionCategory;

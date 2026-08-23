@@ -1,0 +1,123 @@
+noPermission: "<red>¡No tienes permiso!"
+noConsole: "<red>¡Solo para jugadores dentro del juego!"
+invalidSubCommand: "<red>Subcomando no válido » ${1}"
+commandUsage: "<red>Uso » <yellow>{usage}"
+invalidTarget: "<red>No se encontró al jugador » <yellow>{target}"
+invalidNumber: "<red>Número no válido » <yellow>{number}"
+databaseLoading: "<yellow>La base de datos de cabezas todavía se está cargando. Inténtalo de nuevo en breve."
+
+favoritesNone: "<red>¡No tienes cabezas favoritas!"
+localNone: "<red>¡No hay cabezas locales!"
+customCategoriesNone: "<red>¡No hay más categorías!"
+
+purchase:
+  invalidFunds: "<red>¡No tienes suficiente dinero!"
+  failed: "<red>La compra falló. Revisa la consola del servidor."
+  customUnsupported: "<yellow>La entrada de chat personalizada requiere Paper; usa una cantidad predefinida en Spigot."
+  success: "<gray>Compraste <green>{amount}<gray>x <green>{name} <gray>por <green>{cost}"
+  noEconomy: "<gray>Recibiste <green>{amount}<gray>x <green>{name}"
+
+menu:
+  local:
+    name: "<red>HeadDB <gray>» <gold>Cabezas locales"
+  favorites:
+    name: "<red>HeadDB <gray>» <gold>Favoritos"
+    add: "<gold>{name} <gray>se <green>AÑADIÓ <gray>a tus favoritos."
+    remove: "<gold>{name} <gray>se <red>ELIMINÓ <gray>de tus favoritos."
+  search:
+    name: "<red>HeadDB <gray>» <gold>Buscar <gray>» <gold>{name}"
+  recent:
+    name: "<red>HeadDB <gray>» <gold>Añadidas recientemente"
+  customCategories:
+    name: "<red>HeadDB <gray>» <gold>Más categorías"
+  purchase:
+    name: "<red>HeadDB <gray>» <gold>{name} <gray>» <gold>Comprar"
+  main:
+    name: "<red>HeadDB"
+    local:
+      name: "<aqua>Cabezas locales"
+    favorites:
+      name: "<yellow>Favoritos"
+    search:
+      name: "<green>Buscar"
+    customCategories:
+      name: "<rainbow>Más categorías"
+    category:
+      decoration:
+        name: "<gold>Decoración"
+  category:
+    alphabet: "<red>HeadDB <gray>» <gold>Alfabeto"
+    animals: "<red>HeadDB <gray>» <gold>Animales"
+    blocks: "<red>HeadDB <gray>» <gold>Bloques"
+    decoration: "<red>HeadDB <gray>» <gold>Decoración"
+    food & drinks: "<red>HeadDB <gray>» <gold>Comida y bebidas"
+    humanoid: "<red>HeadDB <gray>» <gold>Humanoide"
+    humans: "<red>HeadDB <gray>» <gold>Humanos"
+    miscellaneous: "<red>HeadDB <gray>» <gold>Miscelánea"
+    monsters: "<red>HeadDB <gray>» <gold>Monstruos"
+    plants: "<red>HeadDB <gray>» <gold>Plantas"
+  controls:
+    back:
+      name: "<gold>◀ Atrás"
+      lore: "<gray>Ir a la página anterior: <green>${{BACK}}"
+    info:
+      name: "<gold>ℹ Página <green>${{CURRENT}}<gray>/<red>${{MAX}}"
+      lore: "<gray>Haz clic para ir al menú principal."
+    next:
+      name: "<gold>Siguiente ▶"
+      lore: "<gray>Ir a la página siguiente: <green>${{NEXT}}"
+
+update:
+  available: |-
+    <yellow>Hay una nueva versión de HeadDB: <green>{latest}<gray> (actual: {current})
+    <gray>Descarga: {url}
+
+command:
+  open:
+    opening: "<gray>Abriendo la <red>base de datos de cabezas<gray>."
+    invalidCategory: "<red>Categoría no válida: <yellow>{category}"
+  give:
+    consoleUsage: "<red>Uso desde consola: /hdb give <player> <amount> <head>"
+    invalidId: "<red>ID de cabeza no válido » <yellow>{id}"
+    invalidAmount: "<red>La cantidad debe estar entre <yellow>1<red> y <yellow>{max}"
+    failed: "<red>No se pudo entregar la cabeza. Revisa la consola."
+    success: "<gray>Se entregó <green>{amount}<gray>x <green>{name} <gray>a <green>{target}"
+  search:
+    input: "<gray>Escribe la consulta y los filtros:"
+    manual: "<yellow>La entrada por chat requiere Paper. Ejecuta <white>/hdb search \<consulta\><yellow>."
+    start: "<gray> ⏳ Buscando..."
+    empty: "<red>Escribe un nombre o al menos un filtro."
+    invalidId: "<red>ID de cabeza no válido: <yellow>{id}"
+    failed: "<red>La búsqueda falló. Revisa la consola."
+    none: "<red>¡No se encontraron cabezas!"
+    found: "<gray>Se encontraron <green>{amount} <gray>cabezas."
+    website: "<gray>¿Quieres afinar la búsqueda? <aqua><underlined>Ábrela en headdb.net</underlined></aqua> para filtrar y copiar comandos."
+    filter: |
+      
+      <gray>🔎 <bold>Filtros</bold>
+      <dark_gray>───────────────</dark_gray>
+      <gray>• <white>Nombre</white> » <gold>{name}
+      <gray>• <white>Categoría</white> » <gold>{category}
+      <gray>• <white>Etiquetas</white> » <gold>{tags}
+      <gray>• <white>IDs</white> » <gold>{ids}
+      <gray>• <white>Modo</white> » <gold>{mode}
+      
+  sounds:
+    enabled: "<green>Sonidos de la interfaz de HeadDB activados."
+    disabled: "<yellow>Sonidos de la interfaz de HeadDB desactivados. Ejecuta el comando de nuevo para activarlos."
+  submit:
+    link: "<gray>¿Tienes una cabeza para compartir? <aqua><underlined>Envíala en headdb.net</underlined></aqua> para revisión."
+  sync:
+    start: "<gray>Sincronizando el catálogo de HeadDB..."
+    success: "<green>Catálogo sincronizado. <gray>Hay {amount} cabezas disponibles."
+    failed: "<red>Falló la sincronización: <yellow>{error}"
+  reload:
+    success: "<green>Se recargaron mensajes, sonidos, menús, precios, enlaces y categorías locales. <yellow>Los orígenes de datos, el almacenamiento de jugadores, los hilos y los intervalos requieren reiniciar."
+  inspect:
+    notHead: "<red>Sostén una cabeza de HeadDB o indica un ID, nombre o textura."
+    notFound: "<red>Esa cabeza no está en el catálogo actual."
+    consoleUsage: "<red>Uso desde consola: /hdb inspect <id|nombre|textura>"
+  language:
+    available: "<gray>Idiomas disponibles de HeadDB: <aqua>{languages}"
+    invalid: "<red>Idioma desconocido: <yellow>{language}"
+    changed: "<green>Tu idioma de HeadDB ahora es <aqua>{language}<green>."

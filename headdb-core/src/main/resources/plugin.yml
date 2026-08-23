@@ -9,8 +9,10 @@ softdepend: [
   "Vault"
 ]
 api-version: '1.21'
+folia-supported: true
 libraries:
   - "org.xerial:sqlite-jdbc:${sqlite.version}"
+  - "com.mysql:mysql-connector-j:${mysql.version}"
 
 spigot-id: 84967
 
@@ -30,6 +32,13 @@ permissions:
       headdb.command.give: true
       headdb.command.info: true
       headdb.command.sounds: true
+      headdb.command.submit: true
+      headdb.command.status: true
+      headdb.command.sync: true
+      headdb.command.reload: true
+      headdb.command.inspect: true
+      headdb.command.recent: true
+      headdb.command.language: true
       headdb.update.notify: true
       headdb.category.*: true
       headdb.category.favorites: true
@@ -50,6 +59,27 @@ permissions:
     default: op
   headdb.command.sounds:
     description: Allows toggling personal HeadDB interface sounds.
+    default: true
+  headdb.command.submit:
+    description: Shows a clickable link to the HeadDB submission page.
+    default: true
+  headdb.command.status:
+    description: Shows catalog revision, source, count, and synchronization health.
+    default: op
+  headdb.command.sync:
+    description: Synchronizes the managed head catalog immediately.
+    default: op
+  headdb.command.reload:
+    description: Reloads messages, sounds, menus, prices, website links, and local categories.
+    default: op
+  headdb.command.inspect:
+    description: Inspects a held or identified HeadDB head and links to its web page.
+    default: true
+  headdb.command.recent:
+    description: Browses the most recently assigned catalog IDs.
+    default: true
+  headdb.command.language:
+    description: Selects a personal HeadDB message language.
     default: true
   headdb.update.notify:
     description: Notifies the player when a newer HeadDB release is available.
