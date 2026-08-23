@@ -20,6 +20,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
@@ -160,11 +163,27 @@ public class HDBLocalization extends AbstractLocalization<Component, String, UUI
     }
 
     public void init() {
+        repairBrokenSpanishDefault();
         try {
             loadLanguages(new PaperLoader(HeadDB.class, "messages", new File(plugin.getDataFolder(), "messages")));
             //setConsoleLogFunction((level, message) -> LOGGER.atLevel(toSLF4JLevel(level)).log(ANSIComponentSerializer.ansi().serialize(message)));
         } catch (IOException ex) {
             LOGGER.error("Failed to load languages!", ex);
+        }
+    }
+
+    private void repairBrokenSpanishDefault() {
+        Path file = plugin.getDataFolder().toPath().resolve("messages").resolve("es.yml");
+        if (!Files.isRegularFile(file)) return;
+        try {
+            String contents = Files.readString(file, StandardCharsets.UTF_8);
+            String repaired = contents.replace("\\<consulta\\>", "\\\\<consulta\\\\>");
+            if (!contents.equals(repaired)) {
+                Files.writeString(file, repaired, StandardCharsets.UTF_8);
+                LOGGER.warn("Repaired the invalid Spanish message from the pre-release 6.1.0 build.");
+            }
+        } catch (IOException ex) {
+            LOGGER.warn("Could not repair the Spanish language file before loading it.", ex);
         }
     }
 

@@ -84,7 +84,7 @@ command:
     success: "<gray>Se entregó <green>{amount}<gray>x <green>{name} <gray>a <green>{target}"
   search:
     input: "<gray>Escribe la consulta y los filtros:"
-    manual: "<yellow>La entrada por chat requiere Paper. Ejecuta <white>/hdb search \<consulta\><yellow>."
+    manual: "<yellow>La entrada por chat requiere Paper. Ejecuta <white>/hdb search \\<consulta\\><yellow>."
     start: "<gray> ⏳ Buscando..."
     empty: "<red>Escribe un nombre o al menos un filtro."
     invalidId: "<red>ID de cabeza no válido: <yellow>{id}"
