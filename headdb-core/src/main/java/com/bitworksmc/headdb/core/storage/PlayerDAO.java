@@ -20,6 +20,10 @@ public class PlayerDAO {
     private static final Path DEFAULT_DATA_FOLDER = Path.of("plugins", "HeadDB");
 
     private final String databaseUrl;
+    private final String username;
+    private final String password;
+    private final boolean mysql;
+    private final String tableName;
     private final Path legacyDatabasePath;
 
     public PlayerDAO() {
@@ -27,14 +31,32 @@ public class PlayerDAO {
     }
 
     public PlayerDAO(Path databasePath, Path legacyDatabasePath) {
-        this.databaseUrl = "jdbc:sqlite:" + Objects.requireNonNull(databasePath, "databasePath").toAbsolutePath();
+        this("jdbc:sqlite:" + Objects.requireNonNull(databasePath, "databasePath").toAbsolutePath(),
+                null, null, legacyDatabasePath);
+    }
+
+    public PlayerDAO(String databaseUrl, String username, String password, Path legacyDatabasePath) {
+        this.databaseUrl = Objects.requireNonNull(databaseUrl, "databaseUrl");
+        this.username = username;
+        this.password = password;
+        this.mysql = databaseUrl.startsWith("jdbc:mysql:") || databaseUrl.startsWith("jdbc:mariadb:");
+        this.tableName = mysql ? "headdb_players" : "players";
         this.legacyDatabasePath = Objects.requireNonNull(legacyDatabasePath, "legacyDatabasePath").toAbsolutePath();
+        if (mysql) {
+            try {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+            } catch (ClassNotFoundException ex) {
+                throw new IllegalStateException("MySQL player storage requires mysql-connector-j", ex);
+            }
+        }
     }
 
     public void createTable() {
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
-            stmt.execute(SqlUtils.CREATE_TABLE);
+            stmt.execute(mysql
+                    ? "CREATE TABLE IF NOT EXISTS " + tableName + " (uuid VARCHAR(36) PRIMARY KEY, language VARCHAR(32), favorites TEXT, local_favorites TEXT, sound_enabled BOOLEAN)"
+                    : SqlUtils.CREATE_TABLE);
         } catch (SQLException ex) {
             LOGGER.error("Failed to create table", ex);
         }
@@ -44,7 +66,10 @@ public class PlayerDAO {
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
 
-            try (PreparedStatement stmt = conn.prepareStatement(SqlUtils.INSERT_OR_REPLACE)) {
+            String upsert = mysql
+                    ? "INSERT INTO " + tableName + " (uuid, language, favorites, local_favorites, sound_enabled) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE language=VALUES(language), favorites=VALUES(favorites), local_favorites=VALUES(local_favorites), sound_enabled=VALUES(sound_enabled)"
+                    : SqlUtils.INSERT_OR_REPLACE;
+            try (PreparedStatement stmt = conn.prepareStatement(upsert)) {
                 // Take a stable snapshot of the map. Individual PlayerData fields are
                 // backed by thread-safe/volatile values and are snapshotted below.
                 List<PlayerData> players = new ArrayList<>(dataMap.values());
@@ -91,7 +116,7 @@ public class PlayerDAO {
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(SqlUtils.SELECT_ALL)) {
+             ResultSet rs = stmt.executeQuery("SELECT * FROM " + tableName)) {
 
             while (rs.next()) {
                 String rawUuid = rs.getString("uuid");
@@ -212,6 +237,6 @@ public class PlayerDAO {
     }
 
     private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(databaseUrl);
+        return mysql ? DriverManager.getConnection(databaseUrl, username, password) : DriverManager.getConnection(databaseUrl);
     }
 }

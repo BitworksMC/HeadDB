@@ -1,6 +1,7 @@
 package com.bitworksmc.headdb.core.menu.gui;
 
 import com.github.thesilentpro.grim.gui.PaginatedGUI;
+import com.bitworksmc.headdb.core.menu.registry.ConcurrentGUIRegistry;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 
@@ -10,7 +11,7 @@ import org.bukkit.entity.Player;
 abstract class SafePaginatedGUI extends PaginatedGUI {
 
     protected SafePaginatedGUI(NamespacedKey key) {
-        super(key);
+        super(new ConcurrentGUIRegistry<>(), key);
     }
 
     @Override

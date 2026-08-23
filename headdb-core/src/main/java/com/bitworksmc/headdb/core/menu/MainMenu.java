@@ -10,6 +10,7 @@ import com.bitworksmc.headdb.core.menu.gui.CustomCategoriesGUI;
 import com.bitworksmc.headdb.core.menu.gui.FavoritesHeadsGUI;
 import com.bitworksmc.headdb.core.menu.gui.HeadsGUI;
 import com.bitworksmc.headdb.core.menu.gui.LocalHeadsGUI;
+import com.bitworksmc.headdb.core.menu.registry.ConcurrentPageRegistry;
 import com.bitworksmc.headdb.core.storage.PlayerData;
 import com.bitworksmc.headdb.core.util.Compatibility;
 import com.bitworksmc.headdb.core.util.PermissionUtil;
@@ -33,7 +34,7 @@ public class MainMenu extends SimplePage {
     private static final int[] CATEGORY_SLOTS = {11, 12, 13, 14, 15, 20, 21, 22, 23, 24, 29, 30, 31, 32, 33};
 
     public MainMenu(HeadDB plugin, List<Head> heads) {
-        super(plugin.getLocalization().getConsoleMessage("menu.main.name").orElse(Component.text("HeadDB").color(NamedTextColor.RED)), 6);
+        super(ConcurrentPageRegistry.INSTANCE, plugin.getLocalization().getConsoleMessage("menu.main.name").orElse(Component.text("HeadDB").color(NamedTextColor.RED)), 6);
         preventInteraction();
         renderCategoryButtons(plugin, heads);
         renderLocalButton(plugin);

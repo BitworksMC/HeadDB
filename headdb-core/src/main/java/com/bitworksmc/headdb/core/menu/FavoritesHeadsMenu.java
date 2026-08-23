@@ -6,6 +6,7 @@ import com.github.thesilentpro.grim.page.PaginatedSimplePage;
 import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.core.HeadDB;
 import com.bitworksmc.headdb.core.factory.ItemFactoryRegistry;
+import com.bitworksmc.headdb.core.menu.registry.ConcurrentPageRegistry;
 import com.bitworksmc.headdb.core.storage.PlayerData;
 import com.bitworksmc.headdb.core.util.Compatibility;
 import com.bitworksmc.headdb.core.util.PermissionUtil;
@@ -20,7 +21,7 @@ import java.util.UUID;
 public class FavoritesHeadsMenu extends PaginatedSimplePage {
 
     public FavoritesHeadsMenu(HeadDB plugin, GUI<Integer> gui, Component title, List<Head> heads, List<ItemStack> items) {
-        super(gui, title, 6, 48, 49, 50);
+        super(ConcurrentPageRegistry.INSTANCE, gui, title, 6, 48, 49, 50);
         preventInteraction();
 
         for (Head head : heads) {

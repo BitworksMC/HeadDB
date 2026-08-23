@@ -6,20 +6,48 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import java.io.File;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.Collections;
+import java.util.Locale;
 
 final class LegacyMessages {
-    private final YamlConfiguration messages;
+    private final File messagesDirectory;
+    private final Map<String, YamlConfiguration> languages = new LinkedHashMap<String, YamlConfiguration>();
 
     LegacyMessages(File dataFolder) {
-        messages = YamlConfiguration.loadConfiguration(new File(dataFolder, "messages/en.yml"));
+        messagesDirectory = new File(dataFolder, "messages");
+        reload();
     }
 
     String get(String key, String fallback, String... replacements) {
+        return getForLanguage("en", key, fallback, replacements);
+    }
+
+    String getForLanguage(String language, String key, String fallback, String... replacements) {
+        YamlConfiguration messages = languages.get(language == null ? "en" : language.toLowerCase(Locale.ROOT));
+        if (messages == null) messages = languages.get("en");
         String value = messages.getString(key, fallback);
         for (int i = 0; i + 1 < replacements.length; i += 2) {
             value = value.replace("{" + replacements[i] + "}", replacements[i + 1]);
         }
         return color(value);
+    }
+
+    void reload() {
+        languages.clear();
+        File[] files = messagesDirectory.listFiles((directory, name) -> name.toLowerCase(Locale.ROOT).endsWith(".yml"));
+        if (files != null) for (File file : files) {
+            String name = file.getName();
+            languages.put(name.substring(0, name.length() - 4).toLowerCase(Locale.ROOT),
+                    YamlConfiguration.loadConfiguration(file));
+        }
+        if (!languages.containsKey("en")) {
+            languages.put("en", YamlConfiguration.loadConfiguration(new File(messagesDirectory, "en.yml")));
+        }
+    }
+
+    Set<String> availableLanguages() {
+        return Collections.unmodifiableSet(languages.keySet());
     }
 
     static String color(String value) {

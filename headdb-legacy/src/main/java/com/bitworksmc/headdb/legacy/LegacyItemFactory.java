@@ -95,6 +95,21 @@ final class LegacyItemFactory {
         return item;
     }
 
+    static Integer getHeadId(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) return null;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null || !meta.hasLore()) return null;
+        for (String line : meta.getLore()) {
+            String plain = ChatColor.stripColor(line);
+            if (plain == null) continue;
+            int marker = plain.toLowerCase().indexOf("id:");
+            if (marker < 0) continue;
+            String value = plain.substring(marker + 3).trim().split("\\s+")[0];
+            try { return Integer.valueOf(value); } catch (NumberFormatException ignored) { }
+        }
+        return null;
+    }
+
     /**
      * PLAYER_HEAD was introduced by the 1.13 material flattening. Resolve both
      * names dynamically so this class never links a missing enum constant.

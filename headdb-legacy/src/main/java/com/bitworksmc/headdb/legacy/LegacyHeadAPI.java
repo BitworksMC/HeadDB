@@ -3,6 +3,11 @@ package com.bitworksmc.headdb.legacy;
 import com.bitworksmc.headdb.api.HeadAPI;
 import com.bitworksmc.headdb.api.HeadDatabase;
 import com.bitworksmc.headdb.api.model.Head;
+import com.bitworksmc.headdb.api.catalog.CatalogStatus;
+import com.bitworksmc.headdb.api.catalog.CatalogUpdateListener;
+import com.bitworksmc.headdb.api.search.HeadSearch;
+import com.bitworksmc.headdb.api.search.SearchPage;
+import com.bitworksmc.headdb.api.search.SearchQuery;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.inventory.ItemStack;
@@ -119,6 +124,19 @@ final class LegacyHeadAPI implements HeadAPI {
     }
 
     @Override public ExecutorService getExecutor() { return executor; }
+
+    @Override public CatalogStatus getCatalogStatus() { return database.getCatalogStatus(); }
+
+    @Override
+    public CompletableFuture<SearchPage> search(final SearchQuery query) {
+        Objects.requireNonNull(query, "query");
+        return CompletableFuture.supplyAsync(() -> HeadSearch.search(heads(), query), executor);
+    }
+
+    @Override
+    public AutoCloseable addCatalogUpdateListener(CatalogUpdateListener listener) {
+        return database.addCatalogUpdateListener(Objects.requireNonNull(listener, "listener"));
+    }
 
     private List<Head> heads() {
         List<Head> result = database.getHeads();

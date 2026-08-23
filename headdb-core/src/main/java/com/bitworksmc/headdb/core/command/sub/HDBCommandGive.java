@@ -26,7 +26,7 @@ public class HDBCommandGive extends HDBSubCommand {
     private volatile List<String> headNameCompletions = List.of();
 
     public HDBCommandGive(HeadDB plugin) {
-        super("give", "Give a specific head to a player.", "<player> <amount> <head>", "g");
+        super("give", "Give a specific head to yourself or another player.", "<head> [amount/head] [head]", "g");
         this.plugin = plugin;
         plugin.getHeadApi().onReady().thenAccept(heads -> this.headNameCompletions = heads.stream()
                 .map(Head::getName)
@@ -35,21 +35,46 @@ public class HDBCommandGive extends HDBSubCommand {
                 .toList());
     }
 
+    // /hdb give <head>
+    // /hdb give <amount> <head>
     // /hdb give <player> <amount> <head>
     @Override
     public void handle(CommandSender sender, String[] args) {
-        Player target = Bukkit.getPlayer(args[1]);
+        Player target;
+        int amount = 1;
+        int identifierStart;
+        String amountArgument = "1";
+
+        boolean targetsPlayer = args.length >= 4 && !isInteger(args[1]) && isInteger(args[2]);
+        if (targetsPlayer) {
+            target = Bukkit.getPlayer(args[1]);
+            amountArgument = args[2];
+            identifierStart = 3;
+        } else {
+            if (!(sender instanceof Player player)) {
+                plugin.getLocalization().sendMessage(sender, "command.give.consoleUsage");
+                return;
+            }
+            target = player;
+            if (args.length >= 3 && isInteger(args[1])) {
+                amountArgument = args[1];
+                identifierStart = 2;
+            } else {
+                identifierStart = 1;
+            }
+        }
+
         if (target == null) {
             plugin.getLocalization().sendMessage(sender, "invalidTarget", msg -> msg.replaceText(builder -> builder.matchLiteral("{target}").replacement(args[1])));
             Compatibility.playSound(sender, plugin.getSoundConfig().get("failure"));
             return;
         }
 
-        int amount = 1;
         try {
-            amount = Integer.parseInt(args[2]);
+            amount = Integer.parseInt(amountArgument);
         } catch (NumberFormatException nfe) {
-            plugin.getLocalization().sendMessage(sender, "invalidNumber", msg -> msg.replaceText(builder -> builder.matchLiteral("{number}").replacement(args[2])));
+            String invalidAmount = amountArgument;
+            plugin.getLocalization().sendMessage(sender, "invalidNumber", msg -> msg.replaceText(builder -> builder.matchLiteral("{number}").replacement(invalidAmount)));
             Compatibility.playSound(sender, plugin.getSoundConfig().get("failure"));
             return;
         }
@@ -62,7 +87,7 @@ public class HDBCommandGive extends HDBSubCommand {
         }
 
         final int fAmount = amount;
-        String id = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
+        String id = String.join(" ", Arrays.copyOfRange(args, identifierStart, args.length));
         plugin.getHeadApi().onReady()
                 .thenCompose(ignored -> plugin.getHeadApi().findByName(id, true))
                 .thenCompose(optionalHead -> {
@@ -115,15 +140,30 @@ public class HDBCommandGive extends HDBSubCommand {
 
     @Override
     public @Nullable List<String> handleCompletions(CommandSender sender, String[] args) {
-        if (args.length == 3) {
+        if (args.length == 2) {
+            String prefix = args[1].toLowerCase(Locale.ROOT);
+            Stream<String> playerNames = Bukkit.getOnlinePlayers().stream().map(Player::getName);
+            Stream<String> headNames = headNameCompletions.stream();
+            Stream<String> amounts = numberCompletions.stream()
+                    .filter(value -> Integer.parseInt(value) <= plugin.getCfg().getMaxBuyAmount());
+            return Stream.concat(Stream.concat(playerNames, headNames), amounts)
+                    .filter(value -> value.toLowerCase(Locale.ROOT).startsWith(prefix))
+                    .distinct()
+                    .limit(100)
+                    .toList();
+        }
+
+        Player explicitTarget = Bukkit.getPlayerExact(args[1]);
+        if (explicitTarget != null && args.length == 3) {
             int maximum = plugin.getCfg().getMaxBuyAmount();
             return numberCompletions.stream()
                     .filter(value -> Integer.parseInt(value) <= maximum)
                     .toList();
         }
 
-        if (args.length >= 4) {
-            String prefix = String.join(" ", Arrays.copyOfRange(args, 3, args.length)).trim().toLowerCase(Locale.ROOT);
+        int identifierStart = explicitTarget != null ? 3 : (isInteger(args[1]) ? 2 : 1);
+        if (args.length > identifierStart) {
+            String prefix = String.join(" ", Arrays.copyOfRange(args, identifierStart, args.length)).trim().toLowerCase(Locale.ROOT);
 
             Stream<String> heads = headNameCompletions.stream();
 
@@ -138,6 +178,16 @@ public class HDBCommandGive extends HDBSubCommand {
         }
 
         return null;
+    }
+
+    private static boolean isInteger(String value) {
+        if (value == null || value.isEmpty()) return false;
+        int start = value.charAt(0) == '-' ? 1 : 0;
+        if (start == value.length()) return false;
+        for (int i = start; i < value.length(); i++) {
+            if (!Character.isDigit(value.charAt(i))) return false;
+        }
+        return true;
     }
 
 }

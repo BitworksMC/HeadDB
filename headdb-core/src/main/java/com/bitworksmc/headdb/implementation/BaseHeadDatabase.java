@@ -1,6 +1,9 @@
 package com.bitworksmc.headdb.implementation;
 
 import com.bitworksmc.headdb.api.HeadDatabase;
+import com.bitworksmc.headdb.api.catalog.CatalogStatus;
+import com.bitworksmc.headdb.api.catalog.CatalogUpdate;
+import com.bitworksmc.headdb.api.catalog.CatalogUpdateListener;
 import com.bitworksmc.headdb.api.model.Head;
 import com.bitworksmc.headdb.implementation.model.HeadMapper;
 import com.google.gson.Gson;
@@ -53,6 +56,11 @@ public class BaseHeadDatabase implements HeadDatabase {
      */
     private volatile Snapshot snapshot;
     private volatile int catalogRevision = -1;
+    private volatile long lastAttemptEpochMillis;
+    private volatile long lastSuccessfulUpdateEpochMillis;
+    private volatile String lastError;
+    private volatile String activeSource;
+    private final CopyOnWriteArrayList<CatalogUpdateListener> updateListeners = new CopyOnWriteArrayList<>();
 
     // track the latest load
     private volatile CompletableFuture<List<Head>> lastUpdateFuture;
@@ -105,7 +113,20 @@ public class BaseHeadDatabase implements HeadDatabase {
                 return currentUpdate;
             }
 
-            lastUpdateFuture = CompletableFuture.supplyAsync(this::loadDatabase, executor);
+            Snapshot previousSnapshot = snapshot;
+            int previousRevision = catalogRevision;
+            lastAttemptEpochMillis = System.currentTimeMillis();
+            lastUpdateFuture = CompletableFuture.supplyAsync(this::loadDatabase, executor)
+                    .whenComplete((heads, failure) -> {
+                        if (failure != null) {
+                            lastError = rootMessage(failure);
+                            return;
+                        }
+                        lastError = null;
+                        lastSuccessfulUpdateEpochMillis = System.currentTimeMillis();
+                        CatalogUpdate update = describeUpdate(previousSnapshot, snapshot, previousRevision, catalogRevision);
+                        if (update.hasChanges() || previousRevision != catalogRevision) notifyUpdateListeners(update);
+                    });
             return lastUpdateFuture;
         }
     }
@@ -143,6 +164,7 @@ public class BaseHeadDatabase implements HeadDatabase {
                 Snapshot loadedSnapshot = buildSnapshot(fetched.heads());
                 this.snapshot = loadedSnapshot;
                 this.catalogRevision = fetched.revision();
+                this.activeSource = sourceUrl;
                 persistCatalogCache(loadedSnapshot.heads(), fetched.revision());
 
                 long elapsed = System.currentTimeMillis() - start;
@@ -220,6 +242,7 @@ public class BaseHeadDatabase implements HeadDatabase {
 
     private List<Head> loadChanges() throws IOException {
         Snapshot current = Objects.requireNonNull(snapshot, "snapshot");
+        this.activeSource = syncUrl;
         int fromRevision = catalogRevision;
         int toRevision = -1;
         String cursor = null;
@@ -347,6 +370,7 @@ public class BaseHeadDatabase implements HeadDatabase {
             }
             this.snapshot = buildSnapshot(heads);
             this.catalogRevision = revision;
+            this.activeSource = "cache:" + cachePath.toAbsolutePath();
             LOGGER.info("Restored {} heads from saved catalog revision {}.", heads.size(), revision);
             return true;
         } catch (IOException | RuntimeException ex) {
@@ -637,6 +661,73 @@ public class BaseHeadDatabase implements HeadDatabase {
 
     public int getCatalogRevision() {
         return catalogRevision;
+    }
+
+    @Override
+    public CatalogStatus getCatalogStatus() {
+        Snapshot current = snapshot;
+        return new CatalogStatus(
+                current != null,
+                catalogRevision,
+                current == null ? 0 : current.heads().size(),
+                lastAttemptEpochMillis,
+                lastSuccessfulUpdateEpochMillis,
+                lastError,
+                activeSource
+        );
+    }
+
+    @Override
+    public AutoCloseable addCatalogUpdateListener(CatalogUpdateListener listener) {
+        Objects.requireNonNull(listener, "listener");
+        updateListeners.add(listener);
+        return () -> updateListeners.remove(listener);
+    }
+
+    private CatalogUpdate describeUpdate(Snapshot before, Snapshot after, int previousRevision, int revision) {
+        Map<Integer, Head> previous = new HashMap<>();
+        if (before != null) for (Head head : before.heads()) previous.put(head.getId(), head);
+        Map<Integer, Head> current = new HashMap<>();
+        if (after != null) for (Head head : after.heads()) current.put(head.getId(), head);
+        List<Integer> added = new ArrayList<>();
+        List<Integer> updated = new ArrayList<>();
+        List<Integer> removed = new ArrayList<>();
+        for (Map.Entry<Integer, Head> entry : current.entrySet()) {
+            Head old = previous.get(entry.getKey());
+            if (old == null) added.add(entry.getKey());
+            else if (!sameHead(old, entry.getValue())) updated.add(entry.getKey());
+        }
+        for (Integer id : previous.keySet()) if (!current.containsKey(id)) removed.add(id);
+        Collections.sort(added);
+        Collections.sort(updated);
+        Collections.sort(removed);
+        return new CatalogUpdate(previousRevision, revision, added, updated, removed, System.currentTimeMillis());
+    }
+
+    private void notifyUpdateListeners(CatalogUpdate update) {
+        for (CatalogUpdateListener listener : updateListeners) {
+            try {
+                listener.onCatalogUpdate(update);
+            } catch (RuntimeException ex) {
+                LOGGER.warn("A catalog update listener failed: {}", ex.getMessage());
+                LOGGER.debug("Detailed catalog listener failure", ex);
+            }
+        }
+    }
+
+    private static boolean sameHead(Head left, Head right) {
+        return left.getId() == right.getId()
+                && Objects.equals(left.getName(), right.getName())
+                && Objects.equals(left.getTexture(), right.getTexture())
+                && Objects.equals(left.getTextureUrl(), right.getTextureUrl())
+                && Objects.equals(left.getCategory(), right.getCategory())
+                && Objects.equals(left.getTags(), right.getTags());
+    }
+
+    private static String rootMessage(Throwable failure) {
+        Throwable current = failure;
+        while (current.getCause() != null) current = current.getCause();
+        return current.getMessage() == null ? current.getClass().getSimpleName() : current.getMessage();
     }
 
     private record FetchedCatalog(List<Head> heads, int revision) {

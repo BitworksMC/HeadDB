@@ -137,5 +137,12 @@ indexing:
 
 storage:
   player:
+    # SQLITE stores data in plugins/HeadDB/data/data.db. MYSQL lets a server
+    # network share favorites, language, and sound preferences.
+    backend: "SQLITE"
+    mysql:
+      url: "jdbc:mysql://127.0.0.1:3306/headdb"
+      username: "headdb"
+      password: "change-me"
     # How often the player data is saved to disk. In seconds
     saveInterval: 1800

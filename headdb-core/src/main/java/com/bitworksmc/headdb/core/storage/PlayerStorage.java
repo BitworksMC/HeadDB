@@ -1,5 +1,6 @@
 package com.bitworksmc.headdb.core.storage;
 
+import com.bitworksmc.headdb.core.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,16 +21,28 @@ public class PlayerStorage {
     private final Map<UUID, PlayerData> data = new ConcurrentHashMap<>();
 
     private final PlayerDAO playerDao;
+    private final PlayerDAO localMigrationDao;
 
     public PlayerStorage() {
         this(new File("plugins", "HeadDB"));
     }
 
     public PlayerStorage(File dataFolder) {
+        this(dataFolder, null);
+    }
+
+    public PlayerStorage(File dataFolder, Config config) {
         Path pluginDataFolder = Objects.requireNonNull(dataFolder, "dataFolder").toPath().toAbsolutePath();
         Path databaseDirectory = pluginDataFolder.resolve("data");
         ensureDirectoryExists(databaseDirectory);
-        this.playerDao = new PlayerDAO(databaseDirectory.resolve("data.db"), pluginDataFolder.resolve("data.db"));
+        boolean mysql = config != null && "MYSQL".equals(config.getPlayerStorageBackend());
+        this.playerDao = mysql
+                ? new PlayerDAO(config.getPlayerStorageJdbcUrl(), config.getPlayerStorageUsername(),
+                        config.getPlayerStoragePassword(), pluginDataFolder.resolve("data.db"))
+                : new PlayerDAO(databaseDirectory.resolve("data.db"), pluginDataFolder.resolve("data.db"));
+        this.localMigrationDao = mysql && Files.isRegularFile(databaseDirectory.resolve("data.db"))
+                ? new PlayerDAO(databaseDirectory.resolve("data.db"), pluginDataFolder.resolve("data.db"))
+                : null;
         this.playerDao.createTable();
     }
 
@@ -42,6 +55,11 @@ public class PlayerStorage {
         long start = System.currentTimeMillis();
         Map<UUID, PlayerData> legacyData = this.playerDao.loadLegacyPlayers();
         Map<UUID, PlayerData> currentData = this.playerDao.loadAllPlayers();
+        boolean importedCurrentSqlite = false;
+        if (currentData.isEmpty() && localMigrationDao != null) {
+            currentData.putAll(localMigrationDao.loadAllPlayers());
+            importedCurrentSqlite = !currentData.isEmpty();
+        }
 
         // Import players missing from the v6 database while always preserving a
         // current row as authoritative when the same UUID exists in both files.
@@ -50,8 +68,13 @@ public class PlayerStorage {
         this.data.putAll(legacyData);
         this.data.putAll(currentData);
 
+        if (importedCurrentSqlite) {
+            LOGGER.info("Imported {} player record(s) from local SQLite into MySQL.", currentData.size());
+        }
         if (!legacyData.isEmpty()) {
             LOGGER.info("Imported {} player record(s) from the pre-v6 database.", legacyData.size());
+        }
+        if (!legacyData.isEmpty() || importedCurrentSqlite) {
             this.playerDao.saveAllPlayers(this.data);
         }
         LOGGER.debug("Loaded all data in {}ms", System.currentTimeMillis() - start);

@@ -50,7 +50,7 @@ final class LegacyMenuManager implements Listener {
 
     void openMain(Player player) {
         MenuHolder holder = new MenuHolder("main", "", 0, Collections.<Head>emptyList());
-        Inventory inventory = create(holder, 54, messages.get("menu.main.name", "HeadDB"));
+        Inventory inventory = create(holder, 54, message(player, "menu.main.name", "HeadDB"));
         int slot = 0;
         for (String category : api.findKnownCategories()) {
             if (slot >= 45) break;
@@ -93,7 +93,7 @@ final class LegacyMenuManager implements Listener {
         int maxPage = maxPage(total);
         page = Math.max(0, Math.min(page, maxPage));
         MenuHolder holder = new MenuHolder("favorites", "", page, heads);
-        Inventory inventory = create(holder, 54, messages.get("menu.favorites.name", "HeadDB » Favorites"));
+        Inventory inventory = create(holder, 54, message(player, "menu.favorites.name", "HeadDB » Favorites"));
         int start = page * PAGE_SIZE;
         for (int index = start; index < Math.min(start + PAGE_SIZE, total); index++) {
             int slot = index - start;
@@ -110,14 +110,14 @@ final class LegacyMenuManager implements Listener {
                 }
             }
         }
-        addControls(inventory, holder, page, maxPage);
+        addControls(player, inventory, holder, page, maxPage);
         player.openInventory(inventory);
     }
 
     void openCustomCategories(Player player) {
         if (!allowed(player, "custom")) { deny(player); return; }
         MenuHolder holder = new MenuHolder("custom", "", 0, Collections.<Head>emptyList());
-        Inventory inventory = create(holder, 54, messages.get("menu.customCategories.name", "HeadDB » More Categories"));
+        Inventory inventory = create(holder, 54, message(player, "menu.customCategories.name", "HeadDB » More Categories"));
         YamlConfiguration config = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "categories.yml"));
         int slot = 0;
         for (String key : config.getKeys(false)) {
@@ -129,7 +129,7 @@ final class LegacyMenuManager implements Listener {
             inventory.setItem(slot, icon);
             holder.actions.put(slot++, "custom-category:" + key);
         }
-        addBack(inventory, holder);
+        addBack(player, inventory, holder);
         player.openInventory(inventory);
     }
 
@@ -151,7 +151,7 @@ final class LegacyMenuManager implements Listener {
         int maxPage = maxPage(players.length);
         page = Math.max(0, Math.min(page, maxPage));
         MenuHolder holder = new MenuHolder("local", "", page, Collections.<Head>emptyList());
-        Inventory inventory = create(holder, 54, messages.get("menu.local.name", "HeadDB » Local Heads"));
+        Inventory inventory = create(holder, 54, message(player, "menu.local.name", "HeadDB » Local Heads"));
         int start = page * PAGE_SIZE;
         for (int i = start; i < Math.min(start + PAGE_SIZE, players.length); i++) {
             OfflinePlayer offline = players[i];
@@ -160,7 +160,7 @@ final class LegacyMenuManager implements Listener {
             inventory.setItem(i - start, icon);
             holder.actions.put(i - start, "local-head:" + offline.getUniqueId());
         }
-        addControls(inventory, holder, page, maxPage);
+        addControls(player, inventory, holder, page, maxPage);
         player.openInventory(inventory);
     }
 
@@ -185,7 +185,7 @@ final class LegacyMenuManager implements Listener {
             inventory.setItem(i - start, icon);
             holder.actions.put(i - start, "head:" + head.getId());
         }
-        addControls(inventory, holder, page, maxPage);
+        addControls(player, inventory, holder, page, maxPage);
         player.openInventory(inventory);
     }
 
@@ -235,7 +235,7 @@ final class LegacyMenuManager implements Listener {
 
     private void openPurchase(Player player, Head head) {
         MenuHolder holder = new MenuHolder("purchase", String.valueOf(head.getId()), 0, Collections.<Head>emptyList());
-        Inventory inventory = create(holder, 27, messages.get("menu.purchase.name", "HeadDB » Purchase",
+        Inventory inventory = create(holder, 27, message(player, "menu.purchase.name", "HeadDB » Purchase",
                 "name", head.getName()));
         int[] amounts = {1, 8, 16, 32, 64};
         int[] slots = {10, 11, 13, 15, 16};
@@ -252,7 +252,7 @@ final class LegacyMenuManager implements Listener {
             inventory.setItem(slots[i], icon);
             holder.actions.put(slots[i], "purchase:" + head.getId() + ":" + amounts[i]);
         }
-        addBack(inventory, holder);
+        addBack(player, inventory, holder);
         player.openInventory(inventory);
     }
 
@@ -263,7 +263,7 @@ final class LegacyMenuManager implements Listener {
         if (head == null) return;
         double total = economy.price(head) * amount;
         if (!economy.purchase(player, total)) {
-            player.sendMessage(messages.get("purchase.invalidFunds", "You do not have enough money."));
+            player.sendMessage(message(player, "purchase.invalidFunds", "You do not have enough money."));
             sounds.play(player, "purchase.failed");
             return;
         }
@@ -276,7 +276,7 @@ final class LegacyMenuManager implements Listener {
             remaining -= stack;
         }
         player.closeInventory();
-        player.sendMessage(messages.get("purchase.success", "Bought {amount}x {name} for {cost}",
+        player.sendMessage(message(player, "purchase.success", "Bought {amount}x {name} for {cost}",
                 "amount", String.valueOf(amount), "name", head.getName(), "cost", String.valueOf(total)));
         sounds.play(player, "purchase.completed");
     }
@@ -309,22 +309,24 @@ final class LegacyMenuManager implements Listener {
         for (ItemStack leftover : leftovers.values()) player.getWorld().dropItemNaturally(player.getLocation(), leftover);
     }
 
-    private void addControls(Inventory inventory, MenuHolder holder, int page, int maxPage) {
+    private void addControls(Player player, Inventory inventory, MenuHolder holder, int page, int maxPage) {
         if (page > 0) {
-            inventory.setItem(45, item(material("ARROW", "ARROW"), ChatColor.GOLD + "Previous"));
+            inventory.setItem(45, item(material("ARROW", "ARROW"), message(player, "menu.controls.back.name", ChatColor.GOLD + "Previous")));
             holder.actions.put(45, "back");
         }
-        inventory.setItem(49, item(material("PAPER", "PAPER"), ChatColor.GOLD + "Page " + (page + 1) + "/" + (maxPage + 1)));
+        String pageName = message(player, "menu.controls.info.name", ChatColor.GOLD + "Page ${{CURRENT}}/${{MAX}}")
+                .replace("${{CURRENT}}", String.valueOf(page + 1)).replace("${{MAX}}", String.valueOf(maxPage + 1));
+        inventory.setItem(49, item(material("PAPER", "PAPER"), pageName));
         holder.actions.put(49, "main");
         if (page < maxPage) {
-            inventory.setItem(53, item(material("ARROW", "ARROW"), ChatColor.GOLD + "Next"));
+            inventory.setItem(53, item(material("ARROW", "ARROW"), message(player, "menu.controls.next.name", ChatColor.GOLD + "Next")));
             holder.actions.put(53, "next");
         }
     }
 
-    private void addBack(Inventory inventory, MenuHolder holder) {
+    private void addBack(Player player, Inventory inventory, MenuHolder holder) {
         int slot = inventory.getSize() - 5;
-        inventory.setItem(slot, item(material("ARROW", "ARROW"), ChatColor.GOLD + "Back"));
+        inventory.setItem(slot, item(material("ARROW", "ARROW"), message(player, "menu.controls.back.name", ChatColor.GOLD + "Back")));
         holder.actions.put(slot, "main");
     }
 
@@ -372,8 +374,12 @@ final class LegacyMenuManager implements Listener {
                 || player.hasPermission("headdb.category." + normalize(category));
     }
     private void deny(Player player) {
-        player.sendMessage(messages.get("noPermission", "No permission!"));
+        player.sendMessage(message(player, "noPermission", "No permission!"));
         sounds.play(player, "noPermission");
+    }
+
+    private String message(Player player, String key, String fallback, String... replacements) {
+        return messages.getForLanguage(storage.get(player.getUniqueId()).getLanguage(), key, fallback, replacements);
     }
 
     private static final class MenuHolder implements InventoryHolder {

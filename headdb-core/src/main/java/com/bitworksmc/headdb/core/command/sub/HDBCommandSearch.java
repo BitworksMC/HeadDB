@@ -21,11 +21,17 @@ public class HDBCommandSearch extends HDBSubCommand {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HDBCommandSearch.class);
     private final HeadDB plugin;
-    private final List<String> completions = List.of("tags:", "category:", "ids:", "--any");
+    private final List<String> completions = List.of("tag:", "tags:", "category:", "id:", "ids:", "--any");
+    private volatile List<String> tagCompletions = List.of();
 
     public HDBCommandSearch(HeadDB plugin) {
         super("search", "Search for specific heads.", "[tags:|category:|ids:] [head]", "s", "find");
         this.plugin = plugin;
+        plugin.getHeadApi().onReady().thenAccept(heads -> tagCompletions = heads.stream()
+                .flatMap(head -> head.getTags().stream())
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList());
     }
 
     @Override
@@ -39,8 +45,9 @@ public class HDBCommandSearch extends HDBSubCommand {
         plugin.getHeadApi().onReady().thenApplyAsync(allHeads -> {
             // detect & strip --any
             // Enables loose search (match if any filter passes instead of all).
-            boolean any = Arrays.stream(args).anyMatch(a -> a.equalsIgnoreCase("--any"));
-            List<String> parts = Arrays.stream(args, 1, args.length).filter(a -> !a.equalsIgnoreCase("--any")).toList();
+            List<String> logicalTokens = combineQuotedArguments(Arrays.copyOfRange(args, 1, args.length));
+            boolean any = logicalTokens.stream().anyMatch(a -> a.equalsIgnoreCase("--any"));
+            List<String> parts = logicalTokens.stream().filter(a -> !a.equalsIgnoreCase("--any")).toList();
 
             // parse filters
             String category = null;
@@ -52,16 +59,16 @@ public class HDBCommandSearch extends HDBSubCommand {
                 String lower = token.toLowerCase(Locale.ROOT);
                 if (lower.startsWith("category:")) {
                     category = token.substring("category:".length());
-                } else if (lower.startsWith("tags:")) {
-                    String raw = token.substring("tags:".length());
+                } else if (lower.startsWith("tag:") || lower.startsWith("tags:")) {
+                    String raw = token.substring(token.indexOf(':') + 1);
                     if (!raw.isEmpty()) {
                         Arrays.stream(raw.split(","))
                                 .map(String::trim)
                                 .filter(tag -> !tag.isEmpty())
                                 .forEach(tags::add);
                     }
-                } else if (lower.startsWith("ids:")) {
-                    String raw = token.substring("ids:".length());
+                } else if (lower.startsWith("id:") || lower.startsWith("ids:")) {
+                    String raw = token.substring(token.indexOf(':') + 1);
                     if (!raw.isEmpty()) {
                         for (String part : raw.split(",")) {
                             String trimmed = part.trim();
@@ -106,6 +113,7 @@ public class HDBCommandSearch extends HDBSubCommand {
 
             // lower all your query bits once
             String qCat = category == null ? null : category.toLowerCase(Locale.ROOT);
+            String qCatSlug = WebsiteLinks.slugify(category);
             String qName = nameQuery.trim().toLowerCase(Locale.ROOT);
             Set<String> tagSet = tags.stream().map(t -> t.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
             Set<Integer> idSet = new HashSet<>(ids);
@@ -120,7 +128,8 @@ public class HDBCommandSearch extends HDBSubCommand {
                     String headName = h.getName().toLowerCase(Locale.ROOT);
                     List<String> headTags = h.getTags(); // assume a few tags only
 
-                    boolean matchCat = (headCat.equals(qCat));
+                    boolean matchCat = qCat != null && (headCat.equals(qCat)
+                            || WebsiteLinks.slugify(h.getCategory()).equals(qCatSlug));
                     boolean matchTag = (!tagSet.isEmpty() && headTags.stream().anyMatch(t -> tagSet.contains(t.toLowerCase(Locale.ROOT))));
                     boolean matchId = (!idSet.isEmpty() && idSet.contains(h.getId()));
                     boolean matchName = (!qName.isEmpty() && headName.contains(qName));
@@ -133,8 +142,9 @@ public class HDBCommandSearch extends HDBSubCommand {
                 // ALL‑mode: only add if _every_ non‑empty filter passes
                 for (Head h : allHeads) {
                     // category
-                    if (qCat != null &&
-                            !h.getCategory().equalsIgnoreCase(qCat)) {
+                    if (qCat != null
+                            && !h.getCategory().equalsIgnoreCase(qCat)
+                            && !WebsiteLinks.slugify(h.getCategory()).equals(qCatSlug)) {
                         continue;
                     }
                     // tags
@@ -175,7 +185,7 @@ public class HDBCommandSearch extends HDBSubCommand {
             return new SearchResult(
                     result,
                     qName,
-                    WebsiteLinks.searchUrl(plugin.getCfg().getWebsiteUrl(), nameQuery, category, tags, ids),
+                    WebsiteLinks.searchUrl(plugin.getCfg().getWebsiteUrl(), nameQuery, category, tags, ids, any),
                     true
             );
         }).thenAcceptAsync(searchResult -> {
@@ -218,7 +228,58 @@ public class HDBCommandSearch extends HDBSubCommand {
 
     @Override
     public List<String> handleCompletions(CommandSender sender, String[] args) {
+        String current = args.length == 0 ? "" : args[args.length - 1];
+        String lower = current.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("category:")) {
+            String prefix = lower.substring("category:".length()).replace("\"", "");
+            return plugin.getHeadApi().findKnownCategories().stream()
+                    .filter(category -> category.toLowerCase(Locale.ROOT).startsWith(prefix)
+                            || WebsiteLinks.slugify(category).startsWith(prefix))
+                    .map(category -> "category:" + (category.contains(" ") ? "\"" + category + "\"" : category))
+                    .limit(100)
+                    .toList();
+        }
+        if (lower.startsWith("tag:") || lower.startsWith("tags:")) {
+            String filter = lower.startsWith("tags:") ? "tags:" : "tag:";
+            String entered = current.substring(filter.length());
+            int comma = entered.lastIndexOf(',');
+            String retained = comma >= 0 ? entered.substring(0, comma + 1) : "";
+            String prefix = (comma >= 0 ? entered.substring(comma + 1) : entered).toLowerCase(Locale.ROOT);
+            return tagCompletions.stream()
+                    .filter(tag -> tag.toLowerCase(Locale.ROOT).startsWith(prefix))
+                    .map(tag -> filter + retained + (tag.contains(" ") ? "\"" + tag + "\"" : tag))
+                    .limit(100)
+                    .toList();
+        }
         return completions;
+    }
+
+    static List<String> combineQuotedArguments(String[] raw) {
+        List<String> result = new ArrayList<>();
+        StringBuilder pending = new StringBuilder();
+        boolean quoted = false;
+        for (String token : raw) {
+            if (!quoted) {
+                int quote = token.indexOf('"');
+                if (quote < 0) {
+                    result.add(token);
+                    continue;
+                }
+                quoted = true;
+                pending.append(token, 0, quote).append(token.substring(quote + 1));
+            } else {
+                pending.append(' ').append(token);
+            }
+            int endQuote = pending.indexOf("\"");
+            if (quoted && endQuote >= 0) {
+                pending.deleteCharAt(endQuote);
+                result.add(pending.toString());
+                pending.setLength(0);
+                quoted = false;
+            }
+        }
+        if (pending.length() > 0) result.add(pending.toString());
+        return result;
     }
 
     private void sendWebsiteHint(Player player, String url) {

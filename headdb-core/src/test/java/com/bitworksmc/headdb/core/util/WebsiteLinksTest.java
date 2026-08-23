@@ -25,8 +25,18 @@ class WebsiteLinksTest {
     @Test
     void usesSingleIdAsWebsiteQueryWhenNoNameWasProvided() {
         assertEquals(
-                "https://headdb.net/heads?q=103838",
+                "https://headdb.net/heads?ids=103838",
                 WebsiteLinks.searchUrl("https://headdb.net", "", null, List.of(), List.of(103838))
+        );
+    }
+
+    @Test
+    void preservesMultipleIdsAndAnyMatchMode() {
+        assertEquals(
+                "https://headdb.net/heads?tags=red%2Cblue&ids=12%2C34&match=any",
+                WebsiteLinks.searchUrl(
+                        "https://headdb.net", "", null, List.of("red", "blue"), List.of(12, 34), true
+                )
         );
     }
 

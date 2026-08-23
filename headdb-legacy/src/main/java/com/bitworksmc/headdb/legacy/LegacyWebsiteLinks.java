@@ -19,16 +19,22 @@ final class LegacyWebsiteLinks {
         return normalizeBaseUrl(configuredBaseUrl) + "/submit";
     }
 
+    static String headUrl(String configuredBaseUrl, int headId) {
+        return normalizeBaseUrl(configuredBaseUrl) + "/heads/" + headId;
+    }
+
     static String searchUrl(String configuredBaseUrl, String[] args) {
         String category = null;
         Set<String> tags = new LinkedHashSet<String>();
         List<Integer> ids = new ArrayList<Integer>();
         List<String> names = new ArrayList<String>();
+        boolean matchAny = false;
 
-        for (int i = 1; i < args.length; i++) {
-            String token = args[i];
+        List<String> logicalArguments = combineQuotedArguments(args, 1);
+        for (String token : logicalArguments) {
             String lower = token.toLowerCase(Locale.ROOT);
             if (lower.equals("--any")) {
+                matchAny = true;
                 continue;
             }
             if (lower.startsWith("category:")) {
@@ -58,8 +64,6 @@ final class LegacyWebsiteLinks {
         String name = join(names);
         if (!name.isEmpty()) {
             parameters.add(parameter("q", name));
-        } else if (ids.size() == 1) {
-            parameters.add(parameter("q", String.valueOf(ids.get(0))));
         }
 
         String categorySlug = slugify(category);
@@ -77,6 +81,15 @@ final class LegacyWebsiteLinks {
         if (!tagSlugs.isEmpty()) {
             parameters.add(parameter("tags", join(tagSlugs, ",")));
         }
+
+        if (!ids.isEmpty()) {
+            List<String> idValues = new ArrayList<String>();
+            for (Integer id : ids) {
+                if (id != null && id > 0) idValues.add(String.valueOf(id));
+            }
+            if (!idValues.isEmpty()) parameters.add(parameter("ids", join(idValues, ",")));
+        }
+        if (matchAny) parameters.add(parameter("match", "any"));
 
         String url = normalizeBaseUrl(configuredBaseUrl) + "/heads";
         return parameters.isEmpty() ? url : url + "?" + join(parameters, "&");
@@ -139,5 +152,34 @@ final class LegacyWebsiteLinks {
             result.append(value);
         }
         return result.toString();
+    }
+
+    static List<String> combineQuotedArguments(String[] raw, int start) {
+        List<String> result = new ArrayList<String>();
+        StringBuilder pending = new StringBuilder();
+        boolean quoted = false;
+        for (int i = start; i < raw.length; i++) {
+            String token = raw[i];
+            if (!quoted) {
+                int quote = token.indexOf('"');
+                if (quote < 0) {
+                    result.add(token);
+                    continue;
+                }
+                quoted = true;
+                pending.append(token.substring(0, quote)).append(token.substring(quote + 1));
+            } else {
+                pending.append(' ').append(token);
+            }
+            int end = pending.indexOf("\"");
+            if (end >= 0) {
+                pending.deleteCharAt(end);
+                result.add(pending.toString());
+                pending.setLength(0);
+                quoted = false;
+            }
+        }
+        if (pending.length() > 0) result.add(pending.toString());
+        return result;
     }
 }

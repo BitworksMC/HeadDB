@@ -20,4 +20,24 @@ public class LegacyWebsiteLinksTest {
     public void buildsSubmissionUrlFromValidatedBaseUrl() {
         assertEquals("https://headdb.net/submit", LegacyWebsiteLinks.submissionUrl("javascript:alert(1)"));
     }
+
+    @Test
+    public void preservesMultipleIdsAndAnyMatchMode() {
+        assertEquals(
+                "https://headdb.net/heads?ids=12%2C34&match=any",
+                LegacyWebsiteLinks.searchUrl("https://headdb.net", new String[]{
+                        "search", "ids:12,34", "--any"
+                })
+        );
+    }
+
+    @Test
+    public void combinesQuotedCategoryValues() {
+        assertEquals(
+                "https://headdb.net/heads?category=food-and-drinks",
+                LegacyWebsiteLinks.searchUrl("https://headdb.net", new String[]{
+                        "search", "category:\"Food", "&", "Drinks\""
+                })
+        );
+    }
 }

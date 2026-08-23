@@ -1,6 +1,8 @@
 package com.bitworksmc.headdb.api;
 
 import com.bitworksmc.headdb.api.model.Head;
+import com.bitworksmc.headdb.api.catalog.CatalogStatus;
+import com.bitworksmc.headdb.api.catalog.CatalogUpdateListener;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -42,4 +44,8 @@ public interface HeadDatabase {
 
     // Get a head by texture (returns a head or null if not found)
     Head getByTexture(String texture);
+
+    CatalogStatus getCatalogStatus();
+
+    AutoCloseable addCatalogUpdateListener(CatalogUpdateListener listener);
 }

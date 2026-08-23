@@ -26,6 +26,12 @@ public interface ItemFactory {
     @Nullable
     UUID getIdFromItem(ItemStack item);
 
+    /** Returns the stable HeadDB catalog ID stored on a database head item. */
+    @Nullable
+    default Integer getHeadIdFromItem(ItemStack item) {
+        return null;
+    }
+
     Component getNameFromItem(ItemStack item);
 
     @Nullable

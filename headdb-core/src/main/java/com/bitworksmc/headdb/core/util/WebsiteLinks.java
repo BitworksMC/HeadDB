@@ -48,6 +48,11 @@ public final class WebsiteLinks {
         return normalizeBaseUrl(baseUrl) + "/submit";
     }
 
+    public static String headUrl(String baseUrl, int headId) {
+        if (headId < 1) throw new IllegalArgumentException("headId must be positive");
+        return normalizeBaseUrl(baseUrl) + "/heads/" + headId;
+    }
+
     public static String searchUrl(
             String baseUrl,
             String name,
@@ -55,12 +60,21 @@ public final class WebsiteLinks {
             Collection<String> tags,
             Collection<Integer> ids
     ) {
+        return searchUrl(baseUrl, name, category, tags, ids, false);
+    }
+
+    public static String searchUrl(
+            String baseUrl,
+            String name,
+            String category,
+            Collection<String> tags,
+            Collection<Integer> ids,
+            boolean matchAny
+    ) {
         List<String> parameters = new ArrayList<>();
         String trimmedName = name == null ? "" : name.trim();
         if (!trimmedName.isEmpty()) {
             parameters.add(parameter("q", trimmedName));
-        } else if (ids != null && ids.size() == 1) {
-            parameters.add(parameter("q", String.valueOf(ids.iterator().next())));
         }
 
         String categorySlug = slugify(category);
@@ -79,6 +93,21 @@ public final class WebsiteLinks {
             }
         }
 
+        if (ids != null && !ids.isEmpty()) {
+            String idValues = ids.stream()
+                    .filter(id -> id != null && id > 0)
+                    .map(String::valueOf)
+                    .distinct()
+                    .collect(Collectors.joining(","));
+            if (!idValues.isEmpty()) {
+                parameters.add(parameter("ids", idValues));
+            }
+        }
+
+        if (matchAny) {
+            parameters.add(parameter("match", "any"));
+        }
+
         String url = normalizeBaseUrl(baseUrl) + "/heads";
         return parameters.isEmpty() ? url : url + "?" + String.join("&", parameters);
     }
@@ -89,7 +118,7 @@ public final class WebsiteLinks {
                 .hoverEvent(HoverEvent.showText(hoverText));
     }
 
-    static String slugify(String value) {
+    public static String slugify(String value) {
         if (value == null || value.isBlank()) {
             return "";
         }

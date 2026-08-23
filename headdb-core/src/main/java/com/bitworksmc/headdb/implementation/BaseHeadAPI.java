@@ -4,6 +4,11 @@ package com.bitworksmc.headdb.implementation;
 import com.bitworksmc.headdb.api.HeadAPI;
 import com.bitworksmc.headdb.api.HeadDatabase;
 import com.bitworksmc.headdb.api.model.Head;
+import com.bitworksmc.headdb.api.catalog.CatalogStatus;
+import com.bitworksmc.headdb.api.catalog.CatalogUpdateListener;
+import com.bitworksmc.headdb.api.search.HeadSearch;
+import com.bitworksmc.headdb.api.search.SearchPage;
+import com.bitworksmc.headdb.api.search.SearchQuery;
 import com.bitworksmc.headdb.core.factory.ItemFactoryRegistry;
 import com.bitworksmc.headdb.core.util.Utils;
 import org.bukkit.Bukkit;
@@ -108,6 +113,22 @@ public class BaseHeadAPI implements HeadAPI {
             result.add(head.getCategory());
         }
         return List.copyOf(result);
+    }
+
+    @Override
+    public @NotNull CatalogStatus getCatalogStatus() {
+        return database.getCatalogStatus();
+    }
+
+    @Override
+    public @NotNull CompletableFuture<SearchPage> search(@NotNull SearchQuery query) {
+        Objects.requireNonNull(query, "query");
+        return getHeads().thenApplyAsync(heads -> HeadSearch.search(heads, query), executor);
+    }
+
+    @Override
+    public @NotNull AutoCloseable addCatalogUpdateListener(@NotNull CatalogUpdateListener listener) {
+        return database.addCatalogUpdateListener(Objects.requireNonNull(listener, "listener"));
     }
 
     @NotNull

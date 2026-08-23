@@ -40,6 +40,7 @@ public class Config {
 
     // General
     private long playerStorageSaveInterval;
+    private String playerStorageBackend, playerStorageJdbcUrl, playerStorageUsername, playerStoragePassword;
     private int databaseThreads, apiThreads;
     private long databaseSyncIntervalMinutes;
     private boolean preloadHeads, trackPage, updaterEnabled;
@@ -88,6 +89,18 @@ public class Config {
 
     private void loadGeneral() {
         playerStorageSaveInterval = positiveLong("storage.player.saveInterval", 1800L);
+        playerStorageBackend = config.getString("storage.player.backend", "SQLITE").trim().toUpperCase(Locale.ROOT);
+        if (!playerStorageBackend.equals("SQLITE") && !playerStorageBackend.equals("MYSQL")) {
+            LOGGER.warn("Unknown storage.player.backend '{}'; using SQLITE", playerStorageBackend);
+            playerStorageBackend = "SQLITE";
+        }
+        playerStorageJdbcUrl = config.getString("storage.player.mysql.url", "jdbc:mysql://127.0.0.1:3306/headdb").trim();
+        playerStorageUsername = config.getString("storage.player.mysql.username", "headdb");
+        playerStoragePassword = config.getString("storage.player.mysql.password", "");
+        if (playerStorageBackend.equals("MYSQL") && !playerStorageJdbcUrl.startsWith("jdbc:mysql:")) {
+            LOGGER.warn("storage.player.mysql.url must begin with 'jdbc:mysql:'; using SQLITE player storage");
+            playerStorageBackend = "SQLITE";
+        }
         updaterEnabled = config.getBoolean("updater", true);
         updateCheckerEnabled = config.getBoolean("updateChecker.enabled", true);
         updateCheckerNotifyConsole = config.getBoolean("updateChecker.notifyConsole", true);
@@ -456,6 +469,10 @@ public class Config {
     // === Getters ===
 
     public long getPlayerStorageSaveInterval() { return playerStorageSaveInterval; }
+    public String getPlayerStorageBackend() { return playerStorageBackend; }
+    public String getPlayerStorageJdbcUrl() { return playerStorageJdbcUrl; }
+    public String getPlayerStorageUsername() { return playerStorageUsername; }
+    public String getPlayerStoragePassword() { return playerStoragePassword; }
     public boolean isShowInfoItem() { return showInfoItem; }
     public boolean isHeadsMenuDividerEnabled() { return headsMenuDividerEnabled; }
     public int getHeadsMenuRows() { return headsMenuRows; }
