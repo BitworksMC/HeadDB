@@ -284,14 +284,13 @@ public final class UpdateChecker implements Listener, AutoCloseable {
     }
 
     private static Component fallbackMessage(AvailableUpdate update) {
-        return Component.text()
+        return Component.empty()
                 .append(Component.text("A new HeadDB version is available: ", NamedTextColor.YELLOW))
                 .append(Component.text(update.latestVersion(), NamedTextColor.GREEN))
                 .append(Component.text(" (current: " + update.currentVersion() + ")", NamedTextColor.GRAY))
                 .append(Component.newline())
                 .append(Component.text("Download: ", NamedTextColor.GRAY))
-                .append(downloadLink(update.downloadUrl()))
-                .build();
+                .append(downloadLink(update.downloadUrl()));
     }
 
     private static Component downloadLink(URI url) {
