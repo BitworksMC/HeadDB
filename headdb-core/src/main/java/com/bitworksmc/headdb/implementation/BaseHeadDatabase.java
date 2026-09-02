@@ -161,15 +161,17 @@ public class BaseHeadDatabase implements HeadDatabase {
         for (String sourceUrl : sourceUrls) {
             try {
                 FetchedCatalog fetched = fetchHeads(sourceUrl);
-                Snapshot loadedSnapshot = buildSnapshot(fetched.heads());
-                this.snapshot = loadedSnapshot;
+                Snapshot currentSnapshot = this.snapshot;
+                if (!sameHeads(currentSnapshot, fetched.heads())) {
+                    this.snapshot = buildSnapshot(fetched.heads());
+                }
                 this.catalogRevision = fetched.revision();
                 this.activeSource = sourceUrl;
-                persistCatalogCache(loadedSnapshot.heads(), fetched.revision());
+                persistCatalogCache(this.snapshot.heads(), fetched.revision());
 
                 long elapsed = System.currentTimeMillis() - start;
                 LOGGER.debug("Update took {} seconds ({}ms total)", TimeUnit.MILLISECONDS.toSeconds(elapsed), elapsed);
-                return loadedSnapshot.heads();
+                return this.snapshot.heads();
             } catch (IOException | RuntimeException ex) {
                 lastException = ex;
                 LOGGER.warn("Failed to load heads from '{}': {}", sourceUrl, ex.getMessage());
@@ -722,6 +724,19 @@ public class BaseHeadDatabase implements HeadDatabase {
                 && Objects.equals(left.getTextureUrl(), right.getTextureUrl())
                 && Objects.equals(left.getCategory(), right.getCategory())
                 && Objects.equals(left.getTags(), right.getTags());
+    }
+
+    private static boolean sameHeads(@Nullable Snapshot left, List<Head> right) {
+        if (left == null || left.heads().size() != right.size()) {
+            return false;
+        }
+        for (int i = 0; i < left.heads().size(); i++) {
+            Head candidate = right.get(i);
+            if (candidate == null || !sameHead(left.heads().get(i), candidate)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String rootMessage(Throwable failure) {
