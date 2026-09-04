@@ -59,14 +59,13 @@ public final class HDBCommandInspect extends HDBSubCommand {
 
     public static void sendHeadDetails(HeadDB plugin, CommandSender sender, Head head) {
         String url = WebsiteLinks.headUrl(plugin.getCfg().getWebsiteUrl(), head.getId());
-        Component message = Component.text()
+        Component message = Component.empty()
                 .append(Component.text(head.getName() + " #" + head.getId(), NamedTextColor.GOLD)).appendNewline()
                 .append(Component.text(" Category: ", NamedTextColor.GRAY)).append(Component.text(head.getCategory(), NamedTextColor.WHITE)).appendNewline()
                 .append(Component.text(" Tags: ", NamedTextColor.GRAY)).append(Component.text(String.join(", ", head.getTags()), NamedTextColor.WHITE)).appendNewline()
                 .append(Component.text(" Give: ", NamedTextColor.GRAY)).append(Component.text("/hdb give id:" + head.getId(), NamedTextColor.GREEN)).appendNewline()
                 .append(WebsiteLinks.makeClickable(Component.text(" View, copy, or report on headdb.net", NamedTextColor.AQUA),
-                        url, Component.text("Open " + url, NamedTextColor.AQUA)))
-                .build();
+                        url, Component.text("Open " + url, NamedTextColor.AQUA)));
         Compatibility.sendMessage(sender, message);
     }
 }

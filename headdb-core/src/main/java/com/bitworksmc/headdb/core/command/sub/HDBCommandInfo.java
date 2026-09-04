@@ -39,7 +39,7 @@ public class HDBCommandInfo extends HDBSubCommand {
         }
 
         // Build the colored & emoji-rich message
-        Component message = Component.text()
+        Component message = Component.empty()
                 .append(Component.text("Running ").color(NamedTextColor.GRAY))
                 .append(Component.text("HeadDB " + Compatibility.getPluginVersion(plugin)).color(NamedTextColor.GOLD))
                 .appendNewline()
@@ -53,8 +53,7 @@ public class HDBCommandInfo extends HDBSubCommand {
                 .append(Component.text(bukkitName + " " + bukkitVersion).color(NamedTextColor.WHITE))
                 .appendNewline()
                 .append(Component.text(" Implementation: ").color(NamedTextColor.GRAY))
-                .append(Component.text(serverVersion).color(NamedTextColor.WHITE))
-                .build();
+                .append(Component.text(serverVersion).color(NamedTextColor.WHITE));
 
         if (sender instanceof Player) {
             message = message.appendNewline()

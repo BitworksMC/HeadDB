@@ -53,12 +53,12 @@ snapshot and the legacy BitworksMC GitHub catalog remain available for recovery.
 
 ## 🚀 Download & Installation
 
-HeadDB 6.1.0 is distributed as two server-specific jars. Install exactly one:
+HeadDB 6.1.1 is distributed as two server-specific jars. Install exactly one:
 
 | File | Server versions | Java | Purpose |
 |---|---|---|---|
-| `HeadDB-6.1.0.jar` | Paper/Folia 1.21.0 and newer | Java 21+ | The full modern plugin and the recommended download. |
-| `HeadDB-6.1.0-legacy.jar` | Bukkit-compatible 1.8.8-1.20.6 | Java 8 bytecode* | The isolated implementation for servers before 1.21. |
+| `HeadDB-6.1.1.jar` | Paper/Folia 1.21.0 and newer | Java 21+ | The full modern plugin and the recommended download. |
+| `HeadDB-6.1.1-legacy.jar` | Bukkit-compatible 1.8.8-1.20.6 | Java 8 bytecode* | The isolated implementation for servers before 1.21. |
 
 \* Use the Java version required by the Minecraft server. The legacy plugin
 itself is Java 8-compatible, but later Minecraft releases require newer Java
@@ -157,7 +157,7 @@ Found a bug or have a feature request? Open an issue:
 
 ## 🤝 Using the API
 
-HeadDB 6.1.0 uses two APIs for different purposes:
+HeadDB 6.1.1 uses two APIs for different purposes:
 
 - The **HeadDB HTTP API** at `https://headdb.net/api/v1` is the managed source
   for published head data. The modern plugin downloads
@@ -331,8 +331,8 @@ you agree to the [Minecraft EULA](https://aka.ms/MinecraftEULA).
 Run `mvn clean package` from the repository root. The release files are written
 to:
 
-- `headdb-core/target/HeadDB-6.1.0.jar`
-- `headdb-legacy/target/HeadDB-6.1.0-legacy.jar`
+- `headdb-core/target/HeadDB-6.1.1.jar`
+- `headdb-legacy/target/HeadDB-6.1.1-legacy.jar`
 
 The legacy module uses `--release 8`; the modern module uses `--release 21`.
 Maven may run on a newer JDK when building both artifacts together.

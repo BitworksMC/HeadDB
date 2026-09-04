@@ -21,7 +21,7 @@ public final class HDBCommandStatus extends HDBSubCommand {
 
     @Override public void handle(CommandSender sender, String[] args) {
         CatalogStatus status = plugin.getHeadApi().getCatalogStatus();
-        Component message = Component.text()
+        Component message = Component.empty()
                 .append(Component.text("HeadDB catalog", NamedTextColor.GOLD)).appendNewline()
                 .append(Component.text(" State: ", NamedTextColor.GRAY))
                 .append(Component.text(status.isReady() ? "ready" : "loading", status.isReady() ? NamedTextColor.GREEN : NamedTextColor.YELLOW)).appendNewline()
@@ -30,8 +30,7 @@ public final class HDBCommandStatus extends HDBSubCommand {
                 .append(Component.text(" Last success: ", NamedTextColor.GRAY)).append(Component.text(age(status.getLastSuccessfulUpdateEpochMillis()), NamedTextColor.WHITE)).appendNewline()
                 .append(Component.text(" Source: ", NamedTextColor.GRAY)).append(Component.text(status.getSource() == null ? "not selected" : status.getSource(), NamedTextColor.WHITE))
                 .append(status.getLastError() == null ? Component.empty() : Component.newline()
-                        .append(Component.text(" Last error: ", NamedTextColor.RED)).append(Component.text(status.getLastError(), NamedTextColor.WHITE)))
-                .build();
+                        .append(Component.text(" Last error: ", NamedTextColor.RED)).append(Component.text(status.getLastError(), NamedTextColor.WHITE)));
         Compatibility.sendMessage(sender, message);
     }
 

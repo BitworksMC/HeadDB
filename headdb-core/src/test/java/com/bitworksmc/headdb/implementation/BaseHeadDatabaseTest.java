@@ -155,6 +155,24 @@ class BaseHeadDatabaseTest {
     }
 
     @Test
+    void unchangedRevisionlessSnapshotKeepsPublishedList() {
+        AtomicInteger requests = new AtomicInteger();
+        server.createContext("/heads", exchange -> {
+            requests.incrementAndGet();
+            respond(exchange, 200, HEADS_JSON);
+        });
+        BaseHeadDatabase database = database("/heads", Index.ID);
+
+        List<Head> initial = database.update().join();
+        List<Head> refreshed = database.update().join();
+
+        assertSame(initial, refreshed);
+        assertSame(initial, database.getHeads());
+        assertEquals(-1, database.getCatalogRevision());
+        assertEquals(2, requests.get());
+    }
+
+    @Test
     void appliesRevisionChangesAndRestoresTheSavedCatalog() {
         AtomicInteger snapshotRequests = new AtomicInteger();
         server.createContext("/snapshot", exchange -> {

@@ -287,11 +287,10 @@ public class HDBCommandSearch extends HDBSubCommand {
             return;
         }
         Component message = plugin.getLocalization().getMessage(player.getUniqueId(), "command.search.website")
-                .orElseGet(() -> Component.text()
+                .orElseGet(() -> Component.empty()
                         .append(Component.text("Want to refine this search faster? ", NamedTextColor.GRAY))
                         .append(Component.text("Open it on headdb.net", NamedTextColor.AQUA))
-                        .append(Component.text(" to filter results and copy ready-to-use commands.", NamedTextColor.GRAY))
-                        .build());
+                        .append(Component.text(" to filter results and copy ready-to-use commands.", NamedTextColor.GRAY)));
         Compatibility.sendMessage(player, WebsiteLinks.makeClickable(
                 message,
                 url,

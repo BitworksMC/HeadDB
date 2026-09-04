@@ -28,11 +28,10 @@ public class HDBCommandSubmit extends HDBSubCommand {
 
         String url = WebsiteLinks.submissionUrl(plugin.getCfg().getWebsiteUrl());
         Component message = plugin.getLocalization().getMessage(player.getUniqueId(), "command.submit.link")
-                .orElseGet(() -> Component.text()
+                .orElseGet(() -> Component.empty()
                         .append(Component.text("Have a head to share? ", NamedTextColor.GRAY))
                         .append(Component.text("Submit it on headdb.net", NamedTextColor.AQUA))
-                        .append(Component.text(" for review.", NamedTextColor.GRAY))
-                        .build());
+                        .append(Component.text(" for review.", NamedTextColor.GRAY)));
         Compatibility.sendMessage(player, WebsiteLinks.makeClickable(
                 message,
                 url,

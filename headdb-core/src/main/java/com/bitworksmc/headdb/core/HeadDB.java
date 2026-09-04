@@ -119,10 +119,12 @@ public class HeadDB extends JavaPlugin {
         if (config.isUpdaterEnabled()) {
             long syncIntervalTicks = config.getDatabaseSyncIntervalMinutes() * 60L * 20L;
             Compatibility.runAsyncRepeating(this, () -> {
-                    int previousRevision = this.headDatabase.getCatalogRevision();
+                    List<Head> previousHeads = this.headDatabase.getHeads();
                     this.headDatabase.update().thenAcceptAsync(heads -> {
-                        int currentRevision = this.headDatabase.getCatalogRevision();
-                        if (currentRevision != previousRevision || currentRevision < 0) {
+                        // BaseHeadDatabase retains the published list when a full
+                        // snapshot is unchanged. This also works for custom sources
+                        // that do not expose managed catalog revision headers.
+                        if (heads != previousHeads) {
                             handleDatabaseUpdate(this.configManager.getConfig(), heads);
                             this.menuManager.registerDefaults(this, heads);
                         }
